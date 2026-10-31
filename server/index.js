@@ -10,8 +10,9 @@ app.use(cors());
 app.use(express.json());
 
 const isMac = os.platform() === 'darwin';
+const isWin = os.platform() === 'win32';
 
-// Execute AppleScript safely with timeout
+// Execute AppleScript safely with timeout (macOS)
 function runAppleScript(script, timeoutMs = 2000) {
   return new Promise((resolve, reject) => {
     if (!isMac) {
@@ -31,105 +32,208 @@ function runAppleScript(script, timeoutMs = 2000) {
   });
 }
 
-// Check which music players are running in System Events
+// Execute PowerShell command safely with timeout (Windows)
+function runPowerShell(cmd, timeoutMs = 2500) {
+  return new Promise((resolve, reject) => {
+    if (!isWin) {
+      return reject(new Error('PowerShell is only available on Windows'));
+    }
+    const escaped = cmd.replace(/"/g, '\\"');
+    const command = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${escaped}"`;
+    exec(command, { timeout: timeoutMs }, (error, stdout, stderr) => {
+      if (error) {
+        if (error.killed) {
+          return reject(new Error('PowerShell timed out'));
+        }
+        return reject(new Error(stderr || error.message));
+      }
+      resolve(stdout.trim());
+    });
+  });
+}
+
+// Check which music players are running
 async function getRunningMusicApps() {
-  if (!isMac) return { spotify: false, music: false };
-  const script = `
-    tell application "System Events"
-      set isSpotify to (exists (processes where name is "Spotify"))
-      set isMusic to (exists (processes where name is "Music"))
-    end tell
-    return (isSpotify as string) & "<|>" & (isMusic as string)
-  `;
-  try {
-    const res = await runAppleScript(script, 1500);
-    const [spotify, music] = res.split('<|>').map(s => s.trim() === 'true');
-    return { spotify, music };
-  } catch (e) {
-    return { spotify: false, music: false };
+  if (isMac) {
+    const script = `
+      tell application "System Events"
+        set isSpotify to (exists (processes where name is "Spotify"))
+        set isMusic to (exists (processes where name is "Music"))
+      end tell
+      return (isSpotify as string) & "<|>" & (isMusic as string)
+    `;
+    try {
+      const res = await runAppleScript(script, 1500);
+      const [spotify, music] = res.split('<|>').map(s => s.trim() === 'true');
+      return { spotify, music };
+    } catch (e) {
+      return { spotify: false, music: false };
+    }
+  } else if (isWin) {
+    try {
+      const ps = `
+        $s = (Get-Process -Name spotify -ErrorAction SilentlyContinue) -ne $null
+        $m = (Get-Process -Name "AppleMusic" -ErrorAction SilentlyContinue) -ne $null
+        Write-Output "$s<|>$m"
+      `;
+      const res = await runPowerShell(ps, 1500);
+      const [spotify, music] = res.split('<|>').map(s => s.trim().toLowerCase() === 'true');
+      return { spotify, music };
+    } catch (e) {
+      return { spotify: false, music: false };
+    }
   }
+  return { spotify: false, music: false };
 }
 
 // Query Spotify
 async function getSpotifyState() {
-  const script = `
-    tell application "Spotify"
-      set pState to player state as string
-      if pState is "stopped" then
-        return "stopped<|>none<|>none<|>none<|>0<|>0<|>"
-      end if
-      set tName to name of current track
-      set tArtist to artist of current track
-      set tAlbum to album of current track
-      set tPos to player position
-      set tDur to (duration of current track) / 1000
-      set tArt to artwork url of current track
-      return pState & "<|>" & tName & "<|>" & tArtist & "<|>" & tAlbum & "<|>" & (tPos as string) & "<|>" & (tDur as string) & "<|>" & tArt
-    end tell
-  `;
-  const t0 = Date.now();
-  const res = await runAppleScript(script, 2000);
-  const latencyMs = Date.now() - t0;
-  const [state, track, artist, album, position, duration, artworkUrl] = res.split('<|>');
-  return {
-    state,
-    track,
-    artist,
-    album,
-    position: parseFloat(position) || 0,
-    duration: parseFloat(duration) || 0,
-    artworkUrl: artworkUrl || undefined,
-    latencyMs,
-    sampledAt: Date.now()
-  };
+  if (isMac) {
+    const script = `
+      tell application "Spotify"
+        set pState to player state as string
+        if pState is "stopped" then
+          return "stopped<|>none<|>none<|>none<|>0<|>0<|>"
+        end if
+        set tName to name of current track
+        set tArtist to artist of current track
+        set tAlbum to album of current track
+        set tPos to player position
+        set tDur to (duration of current track) / 1000
+        set tArt to artwork url of current track
+        return pState & "<|>" & tName & "<|>" & tArtist & "<|>" & tAlbum & "<|>" & (tPos as string) & "<|>" & (tDur as string) & "<|>" & tArt
+      end tell
+    `;
+    const t0 = Date.now();
+    const res = await runAppleScript(script, 2000);
+    const latencyMs = Date.now() - t0;
+    const [state, track, artist, album, position, duration, artworkUrl] = res.split('<|>');
+    return {
+      state,
+      track,
+      artist,
+      album,
+      position: parseFloat(position) || 0,
+      duration: parseFloat(duration) || 0,
+      artworkUrl: artworkUrl || undefined,
+      latencyMs,
+      sampledAt: Date.now()
+    };
+  } else if (isWin) {
+    const t0 = Date.now();
+    try {
+      const ps = `
+        $p = Get-Process -Name spotify -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | Select-Object -First 1
+        if (-not $p) {
+          Write-Output "stopped"
+        } else {
+          Write-Output $p.MainWindowTitle
+        }
+      `;
+      const title = await runPowerShell(ps, 1500);
+      const latencyMs = Date.now() - t0;
+      if (!title || title === 'stopped' || title === 'Spotify' || title === 'Spotify Free' || title === 'Spotify Premium') {
+        return {
+          state: 'paused',
+          track: '',
+          artist: '',
+          album: '',
+          position: 0,
+          duration: 0,
+          latencyMs,
+          sampledAt: Date.now()
+        };
+      }
+      const parts = title.split(' - ');
+      const artist = parts[0] ? parts[0].trim() : '';
+      const track = parts.slice(1).join(' - ') ? parts.slice(1).join(' - ').trim() : title;
+      return {
+        state: 'playing',
+        track,
+        artist,
+        album: '',
+        position: 0,
+        duration: 0,
+        latencyMs,
+        sampledAt: Date.now()
+      };
+    } catch (e) {
+      return {
+        state: 'paused',
+        track: '',
+        artist: '',
+        album: '',
+        position: 0,
+        duration: 0,
+        latencyMs: Date.now() - t0,
+        sampledAt: Date.now()
+      };
+    }
+  }
+  return { state: 'stopped', track: '', artist: '', album: '', position: 0, duration: 0 };
 }
 
 // Query Apple Music
 async function getAppleMusicState() {
-  const script = `
-    tell application "Music"
-      set pState to player state as string
-      if pState is "stopped" then
-        return "stopped<|>none<|>none<|>none<|>0<|>0"
-      end if
-      set tName to name of current track
-      set tArtist to artist of current track
-      set tAlbum to album of current track
-      set tPos to player position
-      set tDur to duration of current track
-      return pState & "<|>" & tName & "<|>" & tArtist & "<|>" & tAlbum & "<|>" & (tPos as string) & "<|>" & (tDur as string)
-    end tell
-  `;
-  const t0 = Date.now();
-  const res = await runAppleScript(script, 2000);
-  const latencyMs = Date.now() - t0;
-  const [state, track, artist, album, position, duration] = res.split('<|>');
-  return {
-    state,
-    track,
-    artist,
-    album,
-    position: parseFloat(position) || 0,
-    duration: parseFloat(duration) || 0,
-    latencyMs,
-    sampledAt: Date.now()
-  };
+  if (isMac) {
+    const script = `
+      tell application "Music"
+        set pState to player state as string
+        if pState is "stopped" then
+          return "stopped<|>none<|>none<|>none<|>0<|>0"
+        end if
+        set tName to name of current track
+        set tArtist to artist of current track
+        set tAlbum to album of current track
+        set tPos to player position
+        set tDur to duration of current track
+        return pState & "<|>" & tName & "<|>" & tArtist & "<|>" & tAlbum & "<|>" & (tPos as string) & "<|>" & (tDur as string)
+      end tell
+    `;
+    const t0 = Date.now();
+    const res = await runAppleScript(script, 2000);
+    const latencyMs = Date.now() - t0;
+    const [state, track, artist, album, position, duration] = res.split('<|>');
+    return {
+      state,
+      track,
+      artist,
+      album,
+      position: parseFloat(position) || 0,
+      duration: parseFloat(duration) || 0,
+      latencyMs,
+      sampledAt: Date.now()
+    };
+  }
+  return { state: 'stopped', track: '', artist: '', album: '', position: 0, duration: 0 };
 }
 
-// Now-playing endpoint with high-precision timestamping
-app.get('/api/now-playing', async (req, res) => {
-  if (!isMac) {
-    return res.json({
-      activeApp: 'none',
-      state: 'not_running',
-      error: 'Companion is running on a non-macOS environment'
-    });
-  }
+// Send media key on Windows (179 = Play/Pause, 176 = Next, 177 = Prev)
+function sendWindowsMediaKey(key) {
+  const script = `$wsh = New-Object -ComObject WScript.Shell; $wsh.SendKeys([char]${key})`;
+  return runPowerShell(script);
+}
 
+// API Routes
+app.get('/api/players', async (req, res) => {
+  try {
+    const apps = await getRunningMusicApps();
+    res.json(apps);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/now-playing', async (req, res) => {
   try {
     const running = await getRunningMusicApps();
+    if (!running.spotify && !running.music) {
+      return res.json({
+        activeApp: 'none',
+        state: 'stopped'
+      });
+    }
 
-    // Check Spotify first if running
     if (running.spotify) {
       try {
         const spotState = await getSpotifyState();
@@ -139,12 +243,9 @@ app.get('/api/now-playing', async (req, res) => {
             ...spotState
           });
         }
-      } catch (e) {
-        // Continue to check Apple Music
-      }
+      } catch (e) {}
     }
 
-    // Check Apple Music if running
     if (running.music) {
       try {
         const musicState = await getAppleMusicState();
@@ -154,12 +255,9 @@ app.get('/api/now-playing', async (req, res) => {
             ...musicState
           });
         }
-      } catch (e) {
-        // Fallback
-      }
+      } catch (e) {}
     }
 
-    // Check paused state
     if (running.spotify) {
       try {
         const spotState = await getSpotifyState();
@@ -198,46 +296,79 @@ app.get('/api/now-playing', async (req, res) => {
 // Controls
 app.post('/api/player/play-pause', async (req, res) => {
   const { targetApp } = req.body;
-  const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
-  try {
-    await runAppleScript(`tell application "${appName}" to playpause`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (isMac) {
+    const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
+    try {
+      await runAppleScript(`tell application "${appName}" to playpause`);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  } else if (isWin) {
+    try {
+      await sendWindowsMediaKey(179);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
+  res.json({ success: false, reason: 'unsupported platform' });
 });
 
 app.post('/api/player/next', async (req, res) => {
   const { targetApp } = req.body;
-  const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
-  try {
-    await runAppleScript(`tell application "${appName}" to next track`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (isMac) {
+    const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
+    try {
+      await runAppleScript(`tell application "${appName}" to next track`);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  } else if (isWin) {
+    try {
+      await sendWindowsMediaKey(176);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
+  res.json({ success: false, reason: 'unsupported platform' });
 });
 
 app.post('/api/player/previous', async (req, res) => {
   const { targetApp } = req.body;
-  const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
-  try {
-    await runAppleScript(`tell application "${appName}" to previous track`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (isMac) {
+    const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
+    try {
+      await runAppleScript(`tell application "${appName}" to previous track`);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  } else if (isWin) {
+    try {
+      await sendWindowsMediaKey(177);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
+  res.json({ success: false, reason: 'unsupported platform' });
 });
 
 app.post('/api/player/seek', async (req, res) => {
   const { targetApp, position } = req.body;
-  const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
-  try {
-    await runAppleScript(`tell application "${appName}" to set player position to ${position}`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (isMac) {
+    const appName = targetApp === 'Spotify' ? 'Spotify' : 'Music';
+    try {
+      await runAppleScript(`tell application "${appName}" to set player position to ${position}`);
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
+  res.json({ success: true });
 });
 
 app.get('/api/health', (req, res) => {
@@ -245,7 +376,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     platform: os.platform(),
     isMac,
-    service: 'Lyric macOS Companion Server'
+    isWin,
+    service: 'Lyric Companion Server'
   });
 });
 

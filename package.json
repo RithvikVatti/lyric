@@ -12,6 +12,7 @@
     "start": "concurrently \"npm run server\" \"npm run dev\"",
     "electron:dev": "concurrently \"node server/index.js\" \"vite\" \"electron electron/main.cjs\"",
     "package:mac": "npm run build && electron-builder --mac --dir",
+    "package:win": "npm run build && electron-builder --win zip",
     "build:dmg": "npm run build && electron-builder --mac dmg"
   },
   "build": {
@@ -34,6 +35,12 @@
       ],
       "hardenedRuntime": false,
       "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "signAndEditExecutable": false
     }
   },
   "keywords": [

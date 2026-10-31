@@ -2,19 +2,28 @@
 
 <div align="center">
 
+[![Live Web App](https://img.shields.io/badge/Live_Web_App-GitHub_Pages-brightgreen?logo=githubpages)](https://rithvikvatti.github.io/lyric/)
+[![Releases](https://img.shields.io/github/v/release/RithvikVatti/lyric?color=orange&label=Download%20App)](https://github.com/RithvikVatti/lyric/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![macOS Application](https://img.shields.io/badge/Platform-macOS%20(Apple%20Silicon%20%26%20Intel)-purple?logo=apple)](https://apple.com)
+[![Platforms](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Web-purple)](https://github.com/RithvikVatti/lyric)
 [![Electron](https://img.shields.io/badge/Electron-34.2-47848F?logo=electron)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19.0-61dafb?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-4.0-38bdf8?logo=tailwindcss)](https://tailwindcss.com/)
 [![Lyrics Engine](https://img.shields.io/badge/Lyrics_Engine-LRCLIB-f43f5e)](https://lrclib.net/)
 
-**An open-source recreation and fusion of [trylumen.xyz](https://trylumen.xyz) / [trylumn.xyz](https://trylumn.xyz) (ambient screen-edge rim lighting visualizer) and [verci.xyz](https://verci.xyz) (kinetic word-by-word synchronized lyrics for Mac) with native Spotify & Apple Music support.**
+**An open-source recreation and fusion of [trylumen.xyz](https://trylumen.xyz) / [trylumn.xyz](https://trylumn.xyz) (ambient screen-edge rim lighting visualizer) and [verci.xyz](https://verci.xyz) (kinetic word-by-word synchronized lyrics) for macOS, Windows, and Web with native Spotify & Apple Music support.**
 
-[Overview](#-overview) • [Preview & Demo](#-preview--demo) • [Features](#-features) • [Deep Architecture](#-deep-backend-architecture-explained) • [UI & Liquid Glass](#-ui--liquid-glass-design) • [Quick Start](#-quick-start) • [Packaging for macOS](#-packaging-for-macos) • [Publishing to GitHub](#-publishing-to-github) • [License](#-license)
+[🌐 Try Web App Live](https://rithvikvatti.github.io/lyric/) • [⬇️ Download Desktop App](https://github.com/RithvikVatti/lyric/releases) • [Preview & Demo](#-preview--demo) • [Features](#-features) • [Deep Architecture](#-deep-backend-architecture-explained) • [UI & Liquid Glass](#-ui--liquid-glass-design) • [Quick Start](#-quick-start)
 
 </div>
+
+---
+
+### 🚀 Try It Now
+* **🌐 Web Version**: Run instantly in your browser at **[rithvikvatti.github.io/lyric](https://rithvikvatti.github.io/lyric/)** (includes demo tracks, custom audio file drop, live microphone visualizer, and global song search).
+* **🍎 macOS App**: Download **[Lyric-1.0.0-arm64.dmg](https://github.com/RithvikVatti/lyric/releases)** or **[Lyric-1.0.0-mac-arm64.zip](https://github.com/RithvikVatti/lyric/releases)** for native zero-token Apple Music & Spotify desktop tracking.
+* **🪟 Windows App**: Download **[Lyric-1.0.0-win.zip](https://github.com/RithvikVatti/lyric/releases)** for native Windows Spotify desktop tracking and hardware media key dispatching.
 
 ---
 
@@ -36,17 +45,19 @@
 
 ## 🌟 Overview
 
-**Lyric** turns your Mac screen into an ambient visualizer and dynamic lyric display:
+**Lyric** turns your display into an ambient visualizer and dynamic lyric display:
 - **Heavily Blurred Cover Art Background**: Fullscreen dynamic background derived directly from the currently playing album artwork with gentle vignette and zero color-banding (`blur-[90px] saturate-[145%] brightness-[0.5]`).
 - **Real Liquid Glass UI Elements**: Powered by [`@ybouane/liquidglass`](https://github.com/ybouane/liquidglass), rendering real-time WebGL refraction shaders, chromatic aberration, and Fresnel lighting directly onto floating HTML UI components.
 - **Dynamic Slights (Ambient Perimeter Visualizer)**: Reactive screen border lighting that dynamically pulses and flares to audio sub-bass kicks, procedural rhythm envelopes, or live microphone acoustic sound.
-- **Zero-Token macOS Desktop Bridge**: Communicates directly with native **Apple Music** and **Spotify** desktop apps via AppleScript/JXA with **zero logins, zero developer keys, and zero client secrets**.
+- **Cross-Platform Zero-Token Companion Bridge**:
+  - **macOS**: Communicates directly with native **Apple Music** and **Spotify** desktop apps via AppleScript/JXA with **zero logins, zero developer keys, and zero client secrets**.
+  - **Windows**: Communicates directly with **Spotify** via PowerShell process inspection and WScript media key simulation with **zero OAuth setup**.
 - **Two Curated Kinetic Lyric Styles**:
   1. **✦ Single Word (Verci Signature)**: Displays one massive kinetic word at a time with spring physics and upcoming ghost words preview.
   2. **Smooth Captions (Viral Pop)**: Sentence view where active words bounce out with spring scale (`scale(1.15)`) and radiant glow.
 - **Monotonic 120Hz/60Hz Playback Clock**: Eliminates repeating lyrics, stutter, and lag through latency compensation and monotonic rate steering.
 - **Dark Smoked Floating Capsule Player**: Sleek floating liquid glass capsule player with purely white monochrome icons, live sync calibration buttons (`−` / `+`), and zero clutter (no progress bar, no shuffle/repeat).
-- **100% Self-Contained Mac Application**: Packaged with an embedded native companion server. No terminal commands or background servers needed to launch.
+- **100% Self-Contained Desktop Application**: Packaged with an embedded native companion server. No terminal commands or background servers needed to launch.
 
 ---
 
