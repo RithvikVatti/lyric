@@ -41,42 +41,41 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
     };
     window.addEventListener('resize', handleResize);
 
-    // Create 4 floating ambient orbs
     const orbs: Orb[] = [
       {
-        x: width * 0.25,
-        y: height * 0.3,
-        vx: 0.35,
-        vy: 0.25,
-        radius: Math.min(width, height) * 0.45,
-        baseRadius: Math.min(width, height) * 0.45,
+        x: width * 0.2,
+        y: height * 0.25,
+        vx: 0.25,
+        vy: 0.2,
+        radius: Math.min(width, height) * 0.55,
+        baseRadius: Math.min(width, height) * 0.55,
         colorKey: 'dominant'
       },
       {
-        x: width * 0.75,
-        y: height * 0.65,
-        vx: -0.3,
-        vy: -0.4,
-        radius: Math.min(width, height) * 0.5,
-        baseRadius: Math.min(width, height) * 0.5,
+        x: width * 0.8,
+        y: height * 0.7,
+        vx: -0.22,
+        vy: -0.28,
+        radius: Math.min(width, height) * 0.6,
+        baseRadius: Math.min(width, height) * 0.6,
         colorKey: 'secondary'
       },
       {
         x: width * 0.5,
-        y: height * 0.8,
-        vx: 0.2,
-        vy: -0.3,
-        radius: Math.min(width, height) * 0.4,
-        baseRadius: Math.min(width, height) * 0.4,
+        y: height * 0.85,
+        vx: 0.18,
+        vy: -0.2,
+        radius: Math.min(width, height) * 0.5,
+        baseRadius: Math.min(width, height) * 0.5,
         colorKey: 'accent'
       },
       {
-        x: width * 0.8,
-        y: height * 0.2,
-        vx: -0.25,
-        vy: 0.3,
-        radius: Math.min(width, height) * 0.38,
-        baseRadius: Math.min(width, height) * 0.38,
+        x: width * 0.85,
+        y: height * 0.15,
+        vx: -0.2,
+        vy: 0.22,
+        radius: Math.min(width, height) * 0.45,
+        baseRadius: Math.min(width, height) * 0.45,
         colorKey: 'dominant'
       }
     ];
@@ -84,27 +83,23 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
     let t = 0;
 
     const render = () => {
-      t += 0.01;
+      t += 0.008;
       ctx.clearRect(0, 0, width, height);
 
-      // Deep dark base background
-      ctx.fillStyle = '#06060a';
+      // Deep obsidian background
+      ctx.fillStyle = '#060609';
       ctx.fillRect(0, 0, width, height);
 
-      const bassFactor = isPlaying ? audioEnergy.bass * 0.35 : 0;
-      const trebleFactor = isPlaying ? audioEnergy.treble * 0.2 : 0;
+      const bassBoost = isPlaying ? audioEnergy.bass * 0.4 : 0;
 
-      // Update and draw orbs
       for (const orb of orbs) {
-        orb.x += orb.vx * (isPlaying ? 1.2 : 0.6);
-        orb.y += orb.vy * (isPlaying ? 1.2 : 0.6);
+        orb.x += orb.vx * (isPlaying ? 1.0 : 0.5);
+        orb.y += orb.vy * (isPlaying ? 1.0 : 0.5);
 
-        // Bounce gently against boundaries
-        if (orb.x < width * 0.1 || orb.x > width * 0.9) orb.vx *= -1;
-        if (orb.y < height * 0.1 || orb.y > height * 0.9) orb.vy *= -1;
+        if (orb.x < width * 0.05 || orb.x > width * 0.95) orb.vx *= -1;
+        if (orb.y < height * 0.05 || orb.y > height * 0.95) orb.vy *= -1;
 
-        // Pulse radius with bass
-        orb.radius = orb.baseRadius * (1 + bassFactor + Math.sin(t + orb.x * 0.01) * 0.08);
+        orb.radius = orb.baseRadius * (1 + bassBoost + Math.sin(t + orb.x * 0.005) * 0.06);
 
         const color = palette[orb.colorKey] || palette.dominant;
 
@@ -117,9 +112,9 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
           orb.radius
         );
 
-        grad.addColorStop(0, color.replace(')', ', 0.32)').replace('rgb', 'rgba'));
-        grad.addColorStop(0.5, color.replace(')', ', 0.14)').replace('rgb', 'rgba'));
-        grad.addColorStop(1, 'rgba(6, 6, 10, 0)');
+        grad.addColorStop(0, color.replace(')', ', 0.38)').replace('rgb', 'rgba'));
+        grad.addColorStop(0.5, color.replace(')', ', 0.16)').replace('rgb', 'rgba'));
+        grad.addColorStop(1, 'rgba(6, 6, 9, 0)');
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -127,7 +122,6 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
         ctx.fill();
       }
 
-      // Subtle noise / fine grain overlay
       animId = requestAnimationFrame(render);
     };
 
@@ -142,7 +136,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0 select-none filter blur-2xl opacity-90 transition-opacity duration-700"
+      className="fixed inset-0 pointer-events-none z-0 select-none filter blur-3xl opacity-80 transition-opacity duration-700"
     />
   );
 };

@@ -14,7 +14,8 @@ import { extractPaletteFromImage, PRESET_PALETTES } from './services/colorExtrac
 import {
   checkBridgeHealth,
   fetchMacOSNowPlaying,
-  sendMacOSCommand
+  sendMacOSCommand,
+  fetchArtworkForTrack
 } from './services/macosBridge';
 
 import { AmbientRimLights } from './components/AmbientRimLights';
@@ -189,24 +190,29 @@ export const App: React.FC = () => {
       if (isOnline) {
         const macState = await fetchMacOSNowPlaying();
         if (macState && (macState.state === 'playing' || macState.state === 'paused')) {
-          // If macOS app is active, sync state
           const macSource = macState.activeApp === 'Spotify' ? 'macos-spotify' : 'macos-music';
           if (
             currentTrack.title !== macState.track ||
             currentTrack.artist !== macState.artist ||
             currentTrack.source !== macSource
           ) {
+            // Auto fetch official high-res artwork if missing
+            let artwork = macState.artworkUrl;
+            if (!artwork && macState.track && macState.artist) {
+              artwork = (await fetchArtworkForTrack(macState.track, macState.artist)) || undefined;
+            }
+
             setCurrentTrack({
               id: `mac-${Date.now()}`,
               title: macState.track,
               artist: macState.artist,
               album: macState.album || 'Now Playing',
-              albumArt: macState.artworkUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80',
+              albumArt: artwork || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
               duration: macState.duration || 200,
               position: macState.position || 0,
               isPlaying: macState.state === 'playing',
               source: macSource,
-              badge: `${macState.activeApp} Desktop`
+              badge: `${macState.activeApp}`
             });
             setCurrentTime(macState.position);
             setDuration(macState.duration);
@@ -215,6 +221,10 @@ export const App: React.FC = () => {
             // Update time & play state
             setCurrentTime(macState.position);
             setIsPlaying(macState.state === 'playing');
+            // If artwork was previously missing but now available
+            if (macState.artworkUrl && currentTrack.albumArt !== macState.artworkUrl) {
+              setCurrentTrack(t => ({ ...t, albumArt: macState.artworkUrl! }));
+            }
           }
         }
       }
@@ -453,12 +463,12 @@ export const App: React.FC = () => {
       </header>
 
       {/* 4. Main Stage View Layouts */}
-      <main className="relative z-20 flex-1 w-full h-[calc(100vh-140px)] overflow-hidden px-4 md:px-10 flex items-center justify-center">
+      <main className="relative z-20 flex-1 w-full h-[calc(100vh-120px)] overflow-hidden px-4 sm:px-8 md:px-12 flex items-center justify-center">
         {/* VIEW 1: Split Screen (Player on Left, Synced Lyrics on Right) */}
         {layoutMode === 'split' && (
-          <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-4">
+          <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center py-2">
             {/* Left: Liquid Glass Now Playing Card */}
-            <div className="lg:col-span-5 flex justify-center items-center">
+            <div className="lg:col-span-5 flex justify-center items-center h-full">
               <LiquidGlassPlayer
                 track={currentTrack}
                 palette={activePalette}

@@ -59,12 +59,12 @@ export const AmbientRimLights: React.FC<AmbientRimLightsProps> = ({
       case 'liquid':
         return {
           boxShadow: `
-            inset 0 0 ${effectiveBlur * 1.2}px ${effectiveThickness * 1.3}px ${cSecondary},
-            inset 0 0 ${effectiveBlur * 0.6}px ${effectiveThickness * 0.6}px ${cAccent},
-            0 0 ${effectiveBlur * 2}px ${cDominant}
+            inset 0 0 ${effectiveBlur * 1.2}px ${effectiveThickness * 1.2}px ${cSecondary},
+            inset 0 0 ${effectiveBlur * 0.6}px ${effectiveThickness * 0.5}px ${cAccent},
+            0 0 ${effectiveBlur * 1.8}px ${cDominant}
           `,
           opacity: effectiveOpacity,
-          filter: `blur(${Math.max(1, effectiveBlur * 0.15)}px) brightness(${1 + audioEnergy.treble * 0.3})`,
+          filter: `brightness(${1 + audioEnergy.treble * 0.2})`,
           transition: 'all 0.12s ease-out'
         };
 
@@ -79,9 +79,9 @@ export const AmbientRimLights: React.FC<AmbientRimLightsProps> = ({
       default:
         return {
           boxShadow: `
-            inset 0 0 ${effectiveBlur * 1.4}px ${effectiveThickness}px ${cAccent},
+            inset 0 0 ${effectiveBlur * 1.3}px ${effectiveThickness}px ${cAccent},
             inset 0 0 ${effectiveBlur * 0.7}px ${Math.round(effectiveThickness * 0.5)}px ${cSecondary},
-            inset 0 0 ${effectiveBlur * 2}px ${Math.round(effectiveThickness * 1.5)}px ${cDominant}
+            inset 0 0 ${effectiveBlur * 1.8}px ${Math.round(effectiveThickness * 1.2)}px ${cDominant}
           `,
           opacity: effectiveOpacity,
           transition: 'box-shadow 0.1s ease-out, opacity 0.15s ease-out'
