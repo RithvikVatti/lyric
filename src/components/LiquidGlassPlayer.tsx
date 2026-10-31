@@ -1,22 +1,16 @@
 import React, { useState } from 'react';
-import { Track, ColorPalette, LyricsData } from '../types';
+import { Track } from '../types';
 import {
   Play,
   Pause,
   SkipBack,
   SkipForward,
-  Shuffle,
-  Repeat,
-  Sparkles,
-  Sliders,
-  Maximize2,
-  Apple
+  Share2,
+  Heart
 } from 'lucide-react';
 
 interface LiquidGlassPlayerProps {
   track: Track;
-  palette: ColorPalette;
-  lyrics: LyricsData | null;
   currentTime: number;
   duration: number;
   isPlaying: boolean;
@@ -24,47 +18,24 @@ interface LiquidGlassPlayerProps {
   onNext: () => void;
   onPrev: () => void;
   onSeek: (seconds: number) => void;
-  onSelectTrack: (trackIndex: number) => void;
-  demoTracks: Track[];
-  onOpenSettings: () => void;
-  onToggleFullscreen: () => void;
-  onSearchOpen: () => void;
 }
 
 export const LiquidGlassPlayer: React.FC<LiquidGlassPlayerProps> = ({
   track,
-  palette,
-  lyrics,
   currentTime,
   duration,
   isPlaying,
   onPlayPause,
   onNext,
   onPrev,
-  onSeek,
-  onSelectTrack,
-  demoTracks,
-  onOpenSettings,
-  onToggleFullscreen,
-  onSearchOpen
+  onSeek
 }) => {
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const [isHoveringBar, setIsHoveringBar] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
 
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
-
-  // Mini lyric subtitle for the card
-  const currentMiniLyric = React.useMemo(() => {
-    if (!lyrics || !lyrics.lines || lyrics.lines.length === 0) return null;
-    const current = lyrics.lines.find((l, idx) => {
-      const next = lyrics.lines[idx + 1];
-      return currentTime >= l.time && (!next || currentTime < next.time);
-    });
-    if (current && (current.text === '♪' || current.text === '♫')) return null;
-    return current ? current.text : null;
-  }, [lyrics, currentTime]);
+  const remainingSeconds = Math.max(0, duration - currentTime);
 
   const handleBarMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -78,236 +49,147 @@ export const LiquidGlassPlayer: React.FC<LiquidGlassPlayerProps> = ({
     onSeek(pos * duration);
   };
 
-  const isExternalMac = track.source === 'macos-music' || track.source === 'macos-spotify';
-
   return (
-    <div
-      className="glass-panel w-full max-w-[370px] rounded-3xl p-5 sm:p-6 text-white shadow-2xl relative overflow-hidden transition-all duration-300"
-      style={{
-        boxShadow: `0 20px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px -8px ${palette.glow}`
-      }}
-    >
-      {/* Dynamic ambient highlight glow inside card */}
+    <div className="relative select-none transition-all duration-300">
+      {/* Outer Card Bezel */}
       <div
-        className="absolute -top-20 -right-20 w-48 h-48 rounded-full pointer-events-none opacity-30 mix-blend-screen filter blur-3xl transition-colors duration-700"
-        style={{ background: palette.accent }}
-      />
-      <div
-        className="absolute -bottom-20 -left-20 w-48 h-48 rounded-full pointer-events-none opacity-20 mix-blend-screen filter blur-3xl transition-colors duration-700"
-        style={{ background: palette.secondary }}
-      />
-
-      {/* Top Header & Source Badge */}
-      <div className="flex items-center justify-between mb-4 relative z-10">
-        <div className="flex items-center gap-2">
-          {track.source === 'macos-music' ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-300">
-              <Apple className="w-3.5 h-3.5 fill-current" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Apple Music</span>
-            </div>
-          ) : track.source === 'macos-spotify' ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Spotify</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 text-white/70">
-              <span
-                className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}
-              />
-              <span className="text-[10px] font-bold uppercase tracking-wider">
-                {track.source === 'local-file' ? 'Local Audio' : 'Lumen Player'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onSearchOpen}
-            title="Search songs on iTunes & LRCLIB"
-            className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition"
-          >
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-          </button>
-          <button
-            onClick={onOpenSettings}
-            title="Settings & Controls"
-            className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition"
-          >
-            <Sliders className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onToggleFullscreen}
-            title="Toggle True Fullscreen (F)"
-            className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Album Artwork - Adaptive height so it never gets clipped */}
-      <div className="relative mb-4 flex justify-center z-10">
-        <div
-          className="relative w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 aspect-square rounded-2xl overflow-hidden shadow-2xl transition-transform duration-500 hover:scale-[1.02]"
-          style={{
-            boxShadow: `0 14px 30px -8px rgba(0, 0, 0, 0.8), 0 0 25px -5px ${palette.glow}`
-          }}
-        >
+        className="w-[360px] sm:w-[390px] md:w-[420px] aspect-square rounded-[36px] sm:rounded-[42px] p-2.5 sm:p-3 bg-[#18181c]/70 backdrop-blur-3xl border border-white/10 relative overflow-hidden shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85),0_0_50px_rgba(0,0,0,0.45)]"
+      >
+        {/* Inner Artwork Container */}
+        <div className="relative w-full h-full rounded-[28px] sm:rounded-[34px] overflow-hidden bg-zinc-900 group">
+          {/* Album Cover Art filling the card */}
           <img
             src={track.albumArt}
             alt={track.title}
-            className={`w-full h-full object-cover transition-all duration-700 ${
-              isPlaying ? 'scale-100' : 'scale-95 filter brightness-90'
+            className={`w-full h-full object-cover transition-transform duration-700 ease-out select-none ${
+              isPlaying ? 'scale-100' : 'scale-[0.98] brightness-95'
             }`}
           />
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-black/30 pointer-events-none" />
-        </div>
-      </div>
 
-      {/* Track Title and Artist */}
-      <div className="mb-3 relative z-10">
-        <div className="flex items-start justify-between gap-2">
-          <div className="overflow-hidden">
-            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-white truncate drop-shadow-sm">
-              {track.title}
-            </h1>
-            <p className="text-xs sm:text-sm font-semibold text-white/70 truncate mt-0.5">
-              {track.artist}
-            </p>
+          {/* Top Scrim Gradient */}
+          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/65 via-black/25 to-transparent pointer-events-none" />
+
+          {/* Bottom Scrim Gradient */}
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/85 via-black/45 to-transparent pointer-events-none" />
+
+          {/* ==================================================== */}
+          {/* TOP HEADER: Artist Pill (Left) & Action Buttons (Right) */}
+          {/* ==================================================== */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+            {/* Top-Left Frosted Glass Artist Pill */}
+            <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-xl border border-white/15 px-3 py-1.5 rounded-full shadow-lg max-w-[210px] sm:max-w-[240px]">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden shrink-0 border border-white/20 bg-zinc-800">
+                <img
+                  src={track.albumArt}
+                  alt={track.artist}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col overflow-hidden text-left">
+                <span className="text-xs sm:text-[13px] font-bold text-white truncate leading-tight">
+                  {track.artist}
+                </span>
+                <span className="text-[10px] text-white/60 truncate font-medium leading-tight">
+                  {track.title}
+                </span>
+              </div>
+            </div>
+
+            {/* Top-Right Action Buttons: Share & Like */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: track.title, text: `${track.title} by ${track.artist}` }).catch(() => {});
+                  }
+                }}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 backdrop-blur-xl border border-white/15 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/55 active:scale-95 transition shadow-md"
+                title="Share"
+              >
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+
+              <button
+                onClick={() => setIsLiked(!isLiked)}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 backdrop-blur-xl border border-white/15 flex items-center justify-center active:scale-90 transition shadow-md ${
+                  isLiked ? 'text-red-500' : 'text-white/80 hover:text-white hover:bg-black/55'
+                }`}
+                title="Favorite"
+              >
+                <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLiked ? 'fill-current' : ''}`} />
+              </button>
+            </div>
           </div>
-          {track.badge && (
-            <span className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 uppercase tracking-wider backdrop-blur-md">
-              {track.badge}
-            </span>
-          )}
-        </div>
 
-        {/* Live Mini Lyric Subtitle */}
-        <div className="mt-2 h-5 overflow-hidden flex items-center">
-          {currentMiniLyric ? (
-            <p className="text-xs font-semibold text-cyan-300 truncate flex items-center gap-1.5 animate-in fade-in duration-150">
-              <Sparkles className="w-3 h-3 shrink-0 text-cyan-400" />
-              <span className="truncate">{currentMiniLyric}</span>
-            </p>
-          ) : (
-            <p className="text-[11px] text-white/40 truncate font-medium">
-              {track.album}
-            </p>
-          )}
+          {/* ==================================================== */}
+          {/* BOTTOM CONTROLS: Scrubber Bar & Playback Controls */}
+          {/* ==================================================== */}
+          <div className="absolute bottom-4 left-5 right-5 z-10 space-y-3">
+            {/* Scrubber Progress Bar */}
+            <div>
+              <div className="flex justify-between items-center text-[11px] font-mono font-medium text-white/80 mb-1.5 select-none">
+                <span>{formatTime(currentTime)}</span>
+                <span>-{formatTime(remainingSeconds)}</span>
+              </div>
+
+              <div
+                onClick={handleBarClick}
+                onMouseMove={handleBarMouseMove}
+                onMouseEnter={() => setIsHoveringBar(true)}
+                onMouseLeave={() => setIsHoveringBar(false)}
+                className="relative w-full h-1 bg-white/25 rounded-full cursor-pointer py-1 -my-1 group"
+              >
+                {/* Active Progress Line */}
+                <div
+                  className="absolute top-1 bottom-1 left-0 bg-white rounded-full transition-all duration-75 shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                  style={{ width: `${progressPercent}%` }}
+                />
+
+                {/* Scrubber Hover Pin */}
+                {isHoveringBar && hoverTime !== null && (
+                  <div
+                    className="absolute top-0 bottom-0 w-2 h-2 -mt-0.5 bg-white rounded-full shadow-lg pointer-events-none -translate-x-1"
+                    style={{
+                      left: `${duration > 0 ? (hoverTime / duration) * 100 : 0}%`
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Centered Playback Controls */}
+            <div className="flex items-center justify-center gap-4 pt-1">
+              <button
+                onClick={onPrev}
+                className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white/90 hover:text-white hover:bg-black/50 hover:scale-105 active:scale-95 transition shadow-md"
+                title="Previous Track"
+              >
+                <SkipBack className="w-4 h-4 fill-current" />
+              </button>
+
+              <button
+                onClick={onPlayPause}
+                className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_8px_20px_rgba(0,0,0,0.6)] transition"
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 fill-black" />
+                ) : (
+                  <Play className="w-5 h-5 fill-black translate-x-0.5" />
+                )}
+              </button>
+
+              <button
+                onClick={onNext}
+                className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white/90 hover:text-white hover:bg-black/50 hover:scale-105 active:scale-95 transition shadow-md"
+                title="Next Track"
+              >
+                <SkipForward className="w-4 h-4 fill-current" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Progress Bar */}
-      <div className="mb-4 relative z-10">
-        <div
-          onClick={handleBarClick}
-          onMouseMove={handleBarMouseMove}
-          onMouseEnter={() => setIsHoveringBar(true)}
-          onMouseLeave={() => setIsHoveringBar(false)}
-          className="relative w-full h-1.5 bg-white/15 rounded-full cursor-pointer overflow-hidden group py-1"
-        >
-          <div
-            className="absolute top-0 bottom-0 left-0 rounded-full transition-all duration-100"
-            style={{
-              width: `${progressPercent}%`,
-              background: `linear-gradient(90deg, ${palette.secondary}, ${palette.accent})`
-            }}
-          />
-          {isHoveringBar && hoverTime !== null && (
-            <div
-              className="absolute top-0 bottom-0 w-1 bg-white shadow-lg pointer-events-none"
-              style={{
-                left: `${duration > 0 ? (hoverTime / duration) * 100 : 0}%`
-              }}
-            />
-          )}
-        </div>
-
-        <div className="flex justify-between items-center text-[10px] font-mono text-white/60 mt-1 select-none">
-          <span>{formatTime(currentTime)}</span>
-          {isHoveringBar && hoverTime !== null && (
-            <span className="text-cyan-300 font-bold">{formatTime(hoverTime)}</span>
-          )}
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
-
-      {/* Playback Controls */}
-      <div className="flex items-center justify-between relative z-10">
-        <button
-          onClick={() => setIsShuffle(!isShuffle)}
-          className={`p-2 rounded-xl transition ${
-            isShuffle ? 'text-cyan-400 bg-white/10' : 'text-white/40 hover:text-white'
-          }`}
-          title="Shuffle"
-        >
-          <Shuffle className="w-4 h-4" />
-        </button>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onPrev}
-            className="p-2 rounded-full glass-button text-white/80 hover:text-white active:scale-95 transition"
-            title="Previous Track"
-          >
-            <SkipBack className="w-4 h-4 fill-current" />
-          </button>
-
-          <button
-            onClick={onPlayPause}
-            className="p-3.5 rounded-full text-black font-bold active:scale-90 hover:scale-105 shadow-xl transition-all duration-200"
-            style={{
-              background: `linear-gradient(135deg, #ffffff 0%, ${palette.light} 100%)`,
-              boxShadow: `0 8px 24px -4px ${palette.glow}`
-            }}
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? (
-              <Pause className="w-5 h-5 fill-black" />
-            ) : (
-              <Play className="w-5 h-5 fill-black translate-x-0.5" />
-            )}
-          </button>
-
-          <button
-            onClick={onNext}
-            className="p-2 rounded-full glass-button text-white/80 hover:text-white active:scale-95 transition"
-            title="Next Track"
-          >
-            <SkipForward className="w-4 h-4 fill-current" />
-          </button>
-        </div>
-
-        <button
-          onClick={() => setIsRepeat(!isRepeat)}
-          className={`p-2 rounded-xl transition ${
-            isRepeat ? 'text-cyan-400 bg-white/10' : 'text-white/40 hover:text-white'
-          }`}
-          title="Repeat"
-        >
-          <Repeat className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Quick Demo Tracks dropdown only shown when NOT connected to active external player */}
-      {!isExternalMac && (
-        <div className="pt-3 mt-3 border-t border-white/10 flex items-center justify-between gap-2 relative z-10">
-          <span className="text-[10px] text-white/50 font-semibold">Demo Track:</span>
-          <select
-            value={demoTracks.findIndex(t => t.title === track.title)}
-            onChange={(e) => onSelectTrack(parseInt(e.target.value, 10))}
-            className="bg-white/10 text-white/90 text-xs rounded-xl px-2.5 py-1 border border-white/15 outline-none cursor-pointer hover:bg-white/15 transition max-w-[200px] truncate"
-          >
-            {demoTracks.map((t, idx) => (
-              <option key={t.id} value={idx} className="bg-slate-900 text-white">
-                {t.title} — {t.artist}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
     </div>
   );
 };

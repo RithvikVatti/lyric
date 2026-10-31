@@ -3,10 +3,7 @@ import {
   Track,
   LyricsData,
   ColorPalette,
-  RimLightConfig,
-  LyricConfig,
-  LayoutMode,
-  LyricStyle
+  RimLightConfig
 } from './types';
 import { DEMO_TRACKS, visualizerEngine, createTrackFromFile } from './services/audioManager';
 import { fetchLyricsFromLRCLIB } from './services/lrclib';
@@ -19,11 +16,10 @@ import {
 } from './services/macosBridge';
 import { globalClock } from './services/playbackClock';
 
+import { BlurredCoverBackground } from './components/BlurredCoverBackground';
 import { AmbientRimLights } from './components/AmbientRimLights';
-import { VisualizerCanvas } from './components/VisualizerCanvas';
 import { LiquidGlassPlayer } from './components/LiquidGlassPlayer';
 import { SyncedLyricsView } from './components/SyncedLyricsView';
-import { DynamicIsland } from './components/DynamicIsland';
 import { ControlsModal } from './components/ControlsModal';
 import { TrackSearchModal } from './components/TrackSearchModal';
 
@@ -47,7 +43,7 @@ export const App: React.FC = () => {
   const [lyricsLoading, setLyricsLoading] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  // Audio Visualizer Energy State
+  // Audio Visualizer Energy for Ambient Rim Lights
   const [audioEnergy, setAudioEnergy] = useState({ bass: 0.1, mid: 0.1, treble: 0.1, overall: 0.1 });
 
   // Palette State
@@ -59,39 +55,30 @@ export const App: React.FC = () => {
     mode: 'aurora',
     thickness: 16,
     blur: 40,
-    intensity: 1.0,
-    beatReactivity: 0.6,
+    intensity: 0.9,
+    beatReactivity: 0.5,
     palettePreset: 'album-art'
   });
 
-  const [lyricConfig, setLyricConfig] = useState<LyricConfig>({
-    style: 'verci-single-word', // Default to signature 1-word-at-a-time kinetic stage!
-    fontSize: 'large',
-    wordSync: true,
-    syncOffset: 0,
-    autoScroll: true
-  });
-
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('split');
+  const [syncOffset, setSyncOffset] = useState<number>(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isMacBridgeOnline, setIsMacBridgeOnline] = useState<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const animFrameRef = useRef<number | null>(null);
 
   // Sync manual offset with globalClock
   useEffect(() => {
-    globalClock.setManualOffset(lyricConfig.syncOffset);
-  }, [lyricConfig.syncOffset]);
+    globalClock.setManualOffset(syncOffset);
+  }, [syncOffset]);
 
   // Derived effective palette based on preset
   const activePalette = rimConfig.palettePreset === 'album-art'
     ? extractedPalette
     : PRESET_PALETTES[rimConfig.palettePreset] || extractedPalette;
 
-  // 1. Initialize HTML5 Audio & Visualizer Engine
+  // 1. Initialize HTML5 Audio Element & Visualizer Engine
   useEffect(() => {
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
@@ -128,7 +115,6 @@ export const App: React.FC = () => {
   }, [currentTrack]);
 
   // 2. High-Precision 120Hz / 60Hz RequestAnimationFrame Tick Loop
-  // Updates currentTime every single frame without stutter
   useEffect(() => {
     let loopId: number;
 
@@ -150,7 +136,7 @@ export const App: React.FC = () => {
     return () => cancelAnimationFrame(loopId);
   }, [isPlaying]);
 
-  // 3. Extract album palette and load lyrics when currentTrack changes
+  // 3. Extract palette and load lyrics when track changes
   useEffect(() => {
     let isCancelled = false;
 
@@ -186,7 +172,7 @@ export const App: React.FC = () => {
     };
   }, [currentTrack]);
 
-  // 4. Ultra-Fast macOS Bridge Polling (every 350ms) with Latency Compensation
+  // 4. macOS Bridge Polling (every 350ms)
   useEffect(() => {
     let timer: any;
     let isMounted = true;
@@ -227,13 +213,9 @@ export const App: React.FC = () => {
 
             setDuration(macState.duration);
             setIsPlaying(isPlayingState);
-
-            // Sync high-precision clock with latency compensation
             globalClock.sync(macState.position, isPlayingState, macState.latencyMs || 180);
           } else {
             setIsPlaying(isPlayingState);
-
-            // High-precision clock sync
             globalClock.sync(macState.position, isPlayingState, macState.latencyMs || 180);
 
             if (macState.artworkUrl && currentTrack.albumArt !== macState.artworkUrl) {
@@ -244,7 +226,7 @@ export const App: React.FC = () => {
       }
 
       if (isMounted) {
-        timer = setTimeout(pollBridge, 350); // fast 350ms sample rate
+        timer = setTimeout(pollBridge, 350);
       }
     };
 
@@ -255,7 +237,7 @@ export const App: React.FC = () => {
     };
   }, [currentTrack]);
 
-  // Playback control handlers
+  // Controls
   const handlePlayPause = useCallback(() => {
     visualizerEngine.resume();
     if (currentTrack.source.startsWith('macos-')) {
@@ -351,18 +333,17 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Sync calibration adjustment helper
   const adjustSyncOffset = useCallback((deltaMs: number) => {
-    setLyricConfig(c => {
-      const newOffset = c.syncOffset + deltaMs;
-      const label = newOffset > 0 ? `+${newOffset}ms` : `${newOffset}ms`;
+    setSyncOffset(curr => {
+      const next = curr + deltaMs;
+      const label = next > 0 ? `+${next}ms` : `${next}ms`;
       setSyncFeedback(`Sync: ${label}`);
       setTimeout(() => setSyncFeedback(null), 1500);
-      return { ...c, syncOffset: newOffset };
+      return next;
     });
   }, []);
 
-  // Global Keyboard Shortcuts
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
@@ -379,17 +360,6 @@ export const App: React.FC = () => {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         handleSeek(Math.max(0, currentTime - 5));
-      } else if (e.key === 'l' || e.key === 'L') {
-        // Cycle styles
-        setLyricConfig(c => ({
-          ...c,
-          style:
-            c.style === 'verci-single-word'
-              ? 'smooth-captions'
-              : c.style === 'smooth-captions'
-              ? 'cinematic'
-              : 'verci-single-word'
-        }));
       } else if (e.key === 'r' || e.key === 'R') {
         setRimConfig(c => ({ ...c, enabled: !c.enabled }));
       } else if (e.key === '[') {
@@ -405,14 +375,10 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* 1. Dynamic Ambient Background Mesh */}
-      <VisualizerCanvas
-        palette={activePalette}
-        audioEnergy={audioEnergy}
-        isPlaying={isPlaying}
-      />
+      {/* 1. Natural Blurred Version of the Cover Art as Screen Background */}
+      <BlurredCoverBackground coverUrl={currentTrack.albumArt} />
 
-      {/* 2. Ambient Screen-Edge Rim Lighting */}
+      {/* 2. Ambient Screen-Edge Rim Lighting (trylumn.xyz) */}
       <AmbientRimLights
         config={rimConfig}
         palette={activePalette}
@@ -430,7 +396,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* 3. Top Floating Glass Header Bar */}
+      {/* 3. Top Floating Header Bar */}
       <header className="relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto">
           <div
@@ -450,24 +416,10 @@ export const App: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] text-white/50 tracking-wide font-medium">
-              Kinetic Single-Word & Ambient Rim
+              Ambient Rim & Synced Lyrics
             </p>
           </div>
         </div>
-
-        {layoutMode === 'mini-island' ? (
-          <div className="pointer-events-auto">
-            <DynamicIsland
-              track={currentTrack}
-              palette={activePalette}
-              lyrics={lyrics}
-              currentTime={currentTime}
-              isPlaying={isPlaying}
-              onPlayPause={handlePlayPause}
-              onExpand={() => setLayoutMode('split')}
-            />
-          </div>
-        ) : null}
 
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
@@ -508,50 +460,13 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* 4. Main Stage View Layouts */}
-      <main className="relative z-20 flex-1 w-full h-[calc(100vh-120px)] overflow-hidden px-4 sm:px-8 md:px-12 flex items-center justify-center">
-        {layoutMode === 'split' && (
-          <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center py-2">
-            <div className="lg:col-span-5 flex justify-center items-center h-full">
-              <LiquidGlassPlayer
-                track={currentTrack}
-                palette={activePalette}
-                lyrics={lyrics}
-                currentTime={currentTime}
-                duration={duration}
-                isPlaying={isPlaying}
-                onPlayPause={handlePlayPause}
-                onNext={handleNext}
-                onPrev={handlePrev}
-                onSeek={handleSeek}
-                onSelectTrack={handleSelectTrack}
-                demoTracks={DEMO_TRACKS}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-                onToggleFullscreen={toggleFullscreen}
-                onSearchOpen={() => setIsSearchOpen(true)}
-              />
-            </div>
-
-            <div className="lg:col-span-7 h-full flex flex-col justify-center overflow-hidden">
-              <SyncedLyricsView
-                lyrics={lyrics}
-                currentTime={currentTime}
-                duration={duration}
-                config={lyricConfig}
-                palette={activePalette}
-                onSeek={handleSeek}
-                onSearchOpen={() => setIsSearchOpen(true)}
-              />
-            </div>
-          </div>
-        )}
-
-        {layoutMode === 'lockscreen' && (
-          <div className="w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-300">
+      {/* 4. Main Stage View: Reference Player Card (Left) & Synced Lyrics (Right) */}
+      <main className="relative z-20 flex-1 w-full h-[calc(100vh-120px)] overflow-hidden px-6 sm:px-10 md:px-16 flex items-center justify-center">
+        <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center py-4">
+          {/* LEFT: Cover art player card matching the reference image */}
+          <div className="lg:col-span-5 flex justify-center items-center h-full">
             <LiquidGlassPlayer
               track={currentTrack}
-              palette={activePalette}
-              lyrics={lyrics}
               currentTime={currentTime}
               duration={duration}
               isPlaying={isPlaying}
@@ -559,102 +474,45 @@ export const App: React.FC = () => {
               onNext={handleNext}
               onPrev={handlePrev}
               onSeek={handleSeek}
-              onSelectTrack={handleSelectTrack}
-              demoTracks={DEMO_TRACKS}
-              onOpenSettings={() => setIsSettingsOpen(true)}
-              onToggleFullscreen={toggleFullscreen}
-              onSearchOpen={() => setIsSearchOpen(true)}
             />
           </div>
-        )}
 
-        {layoutMode === 'fullscreen-lyrics' && (
-          <div className="w-full h-full max-w-4xl mx-auto flex flex-col justify-center animate-in fade-in duration-300">
+          {/* RIGHT: High-end Synced Lyrics */}
+          <div className="lg:col-span-7 h-full flex flex-col justify-center overflow-hidden">
             <SyncedLyricsView
               lyrics={lyrics}
               currentTime={currentTime}
               duration={duration}
-              config={lyricConfig}
               palette={activePalette}
               onSeek={handleSeek}
               onSearchOpen={() => setIsSearchOpen(true)}
             />
           </div>
-        )}
-
-        {layoutMode === 'mini-island' && (
-          <div className="flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-24 h-24 rounded-full p-1 border-2 border-white/20 shadow-2xl relative">
-              <img
-                src={currentTrack.albumArt}
-                alt={currentTrack.title}
-                className={`w-full h-full object-cover rounded-full ${isPlaying ? 'animate-spin' : ''}`}
-                style={{ animationDuration: '8s' }}
-              />
-            </div>
-            <h2 className="text-2xl font-bold text-white drop-shadow">{currentTrack.title}</h2>
-            <p className="text-white/60 text-sm font-medium">{currentTrack.artist}</p>
-            <button
-              onClick={() => setLayoutMode('split')}
-              className="px-5 py-2 glass-button rounded-xl text-xs font-semibold text-white/90"
-            >
-              Open Full Player
-            </button>
-          </div>
-        )}
-
-        {layoutMode === 'rim-only' && (
-          <div
-            onClick={() => setLayoutMode('split')}
-            className="cursor-pointer text-center p-8 glass-pill rounded-3xl opacity-40 hover:opacity-100 transition duration-300"
-          >
-            <Sun className="w-8 h-8 text-amber-400 mx-auto mb-2 animate-pulse" />
-            <p className="text-xs text-white/80 font-medium">
-              Pure Rim Lighting Mode Active. Click anywhere to reveal player.
-            </p>
-          </div>
-        )}
+        </div>
       </main>
 
-      {/* 5. Bottom Status Dock with Quick Caption Mode Switcher */}
+      {/* 5. Bottom Status Dock */}
       <footer className="relative z-30 w-full px-6 py-3 flex items-center justify-between text-xs text-white/50 pointer-events-none">
-        {/* Caption Style Switcher */}
-        <div className="flex items-center gap-1.5 pointer-events-auto bg-black/40 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
-          <button
-            onClick={() => setLyricConfig(c => ({ ...c, style: 'verci-single-word' }))}
-            className={`px-3 py-1 rounded-xl transition text-[11px] font-bold ${
-              lyricConfig.style === 'verci-single-word'
-                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            ✦ Single Word (Verci)
-          </button>
-          <button
-            onClick={() => setLyricConfig(c => ({ ...c, style: 'smooth-captions' }))}
-            className={`px-3 py-1 rounded-xl transition text-[11px] font-bold ${
-              lyricConfig.style === 'smooth-captions'
-                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            Smooth Captions
-          </button>
-          <button
-            onClick={() => setLyricConfig(c => ({ ...c, style: 'cinematic' }))}
-            className={`px-3 py-1 rounded-xl transition text-[11px] font-bold ${
-              lyricConfig.style === 'cinematic'
-                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            Cinematic Flow
-          </button>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Quick Demo Switcher if not connected to macOS app */}
+          {!currentTrack.source.startsWith('macos-') && (
+            <select
+              value={currentTrackIndex}
+              onChange={(e) => handleSelectTrack(parseInt(e.target.value, 10))}
+              className="bg-black/40 text-white/80 text-xs rounded-xl px-2.5 py-1 border border-white/10 outline-none cursor-pointer hover:bg-black/60 transition"
+            >
+              {DEMO_TRACKS.map((t, idx) => (
+                <option key={t.id} value={idx} className="bg-zinc-900 text-white">
+                  {t.title} — {t.artist}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Sync Calibration Controls & Hotkeys */}
         <div className="flex items-center gap-3 pointer-events-auto text-[11px]">
-          <div className="hidden sm:flex items-center gap-1 font-mono">
+          <div className="flex items-center gap-1 font-mono">
             <span className="text-white/40">Sync:</span>
             <button
               onClick={() => adjustSyncOffset(-50)}
@@ -664,7 +522,7 @@ export const App: React.FC = () => {
               -50ms
             </button>
             <span className="text-cyan-300 font-bold px-1">
-              {lyricConfig.syncOffset > 0 ? `+${lyricConfig.syncOffset}` : lyricConfig.syncOffset}ms
+              {syncOffset > 0 ? `+${syncOffset}` : syncOffset}ms
             </span>
             <button
               onClick={() => adjustSyncOffset(50)}
@@ -677,7 +535,7 @@ export const App: React.FC = () => {
 
           <span className="hidden md:inline text-white/30">•</span>
           <span className="hidden md:inline text-white/40 font-medium">
-            Keys: Space (Play) • L (Style) • [ ] (Sync $\pm$50ms)
+            Keys: Space (Play/Pause) • [ ] (Sync $\pm$50ms) • F (Fullscreen)
           </span>
         </div>
       </footer>
@@ -688,10 +546,16 @@ export const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         rimConfig={rimConfig}
         setRimConfig={setRimConfig}
-        lyricConfig={lyricConfig}
-        setLyricConfig={setLyricConfig}
-        layoutMode={layoutMode}
-        setLayoutMode={setLayoutMode}
+        lyricConfig={{
+          style: 'cinematic',
+          fontSize: 'large',
+          wordSync: true,
+          syncOffset,
+          autoScroll: true
+        }}
+        setLyricConfig={() => {}}
+        layoutMode="split"
+        setLayoutMode={() => {}}
         palette={activePalette}
         isMacBridgeOnline={isMacBridgeOnline}
         onFileUpload={handleFileUpload}
