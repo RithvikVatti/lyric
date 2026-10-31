@@ -248,6 +248,12 @@ function createWindow() {
     }
   });
 
+  mainWindow.webContents.on('did-fail-load', (e, code, desc, url) => {
+    console.error('did-fail-load:', code, desc, url);
+  });
+  mainWindow.webContents.on('console-message', (e, level, message, line, sourceId) => {
+    console.log('[RENDERER CONSOLE]:', message, `(${sourceId}:${line})`);
+  });
   const indexPath = path.join(__dirname, '../dist/index.html');
   const devUrl = process.env.VITE_DEV_SERVER_URL;
 

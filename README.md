@@ -22,8 +22,11 @@
 
 <div align="center">
 
-<!-- Drop your screenrecording GIF or video here (e.g. assets/preview.gif) -->
-<img src="./assets/preview.png" alt="Lyric Lockscreen & Ambient Visualizer Preview" width="850" onerror="this.style.display='none'" />
+<img src="./assets/preview.png" alt="Lyric Lockscreen & Ambient Visualizer Preview" width="850" />
+
+<p>
+  <a href="./assets/preview.mp4"><strong>▶ Watch Full HD Screen Recording Demo (preview.mp4)</strong></a>
+</p>
 
 *Real-time kinetic lyrics popping to the rhythm, ambient perimeter rim lighting syncing with the audio, and dark smoked liquid glass over blurred album artwork.*
 

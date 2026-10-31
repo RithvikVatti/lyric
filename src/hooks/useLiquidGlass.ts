@@ -35,40 +35,48 @@ export function useLiquidGlass(
 
       if (glassElements.length === 0) return;
 
-      // Clean up previous instance
-      if (instanceRef.current) {
-        try {
-          instanceRef.current.destroy();
-        } catch (e) {
-          // ignore
-        }
-        instanceRef.current = null;
+      // Clean up previous instances
+      if (Array.isArray(instanceRef.current)) {
+        instanceRef.current.forEach(inst => {
+          try { inst.destroy(); } catch (e) {}
+        });
+        instanceRef.current = [];
       }
 
-      try {
-        const instance = await LiquidGlass.init({
-          root,
-          glassElements,
-          defaults: {
-            refraction: options.refraction ?? 0.45,
-            chromAberration: options.chromAberration ?? 0.035,
-            edgeHighlight: options.edgeHighlight ?? 0.1,
-            blurAmount: options.blurAmount ?? 0.12,
-            cornerRadius: options.cornerRadius ?? 38,
-            brightness: options.brightness ?? -0.22, // Dark smoked glass shader
-            opacity: options.opacity ?? 0.8,        // Transparent enough for background transmission
-            floating: options.floating ?? false,
-            button: false
-          }
-        });
+      const instances: any[] = [];
+      for (const el of glassElements) {
+        const root = el.parentElement || rootRef.current;
+        if (!root) continue;
 
-        if (!isCancelled) {
-          instanceRef.current = instance;
-        } else {
-          instance.destroy();
+        try {
+          const instance = await LiquidGlass.init({
+            root,
+            glassElements: [el],
+            defaults: {
+              refraction: options.refraction ?? 0.45,
+              chromAberration: options.chromAberration ?? 0.035,
+              edgeHighlight: options.edgeHighlight ?? 0.1,
+              blurAmount: options.blurAmount ?? 0.12,
+              cornerRadius: options.cornerRadius ?? 38,
+              brightness: options.brightness ?? -0.22,
+              opacity: options.opacity ?? 0.8,
+              floating: options.floating ?? false,
+              button: false
+            }
+          });
+
+          if (!isCancelled) {
+            instances.push(instance);
+          } else {
+            instance.destroy();
+          }
+        } catch (err) {
+          console.warn('LiquidGlass WebGL init notice (using CSS glass fallback):', err);
         }
-      } catch (err) {
-        console.warn('LiquidGlass WebGL init notice (using CSS glass fallback):', err);
+      }
+
+      if (!isCancelled) {
+        instanceRef.current = instances;
       }
     };
 
@@ -78,12 +86,15 @@ export function useLiquidGlass(
     return () => {
       isCancelled = true;
       clearTimeout(timer);
-      if (instanceRef.current) {
+      if (Array.isArray(instanceRef.current)) {
+        instanceRef.current.forEach(inst => {
+          try { inst.destroy(); } catch (e) {}
+        });
+        instanceRef.current = [];
+      } else if (instanceRef.current) {
         try {
           instanceRef.current.destroy();
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
         instanceRef.current = null;
       }
     };

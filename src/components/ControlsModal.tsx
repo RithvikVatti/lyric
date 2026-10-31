@@ -78,7 +78,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Lumen Settings & Controls</h2>
+              <h2 className="text-base font-bold text-white">Lyric Settings & Controls</h2>
               <p className="text-xs text-white/50">Kinetic captions, sync calibration & ambient glow</p>
             </div>
           </div>
@@ -462,7 +462,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
           {activeTab === 'about' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
-                <h4 className="font-bold text-white text-base">Lumen — 100% Free & Open Source</h4>
+                <h4 className="font-bold text-white text-base">Lyric — 100% Free & Open Source</h4>
                 <p className="text-xs text-white/70 leading-relaxed">
                   Open-source fusion of <b>trylumn.xyz</b> ambient lighting and <b>verci.xyz</b> word-by-word kinetic lyrics.
                 </p>

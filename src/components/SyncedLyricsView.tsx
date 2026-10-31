@@ -122,10 +122,10 @@ export const SyncedLyricsView: React.FC<SyncedLyricsViewProps> = ({
                   animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, y: -25, scale: 1.05, filter: 'blur(6px)' }}
                   transition={{
-                    type: 'spring',
-                    stiffness: 450,
-                    damping: 26,
-                    mass: 0.7
+                    y: { type: 'spring', stiffness: 450, damping: 26, mass: 0.7 },
+                    scale: { type: 'spring', stiffness: 450, damping: 26, mass: 0.7 },
+                    opacity: { duration: 0.15 },
+                    filter: { duration: 0.15, ease: 'easeOut' }
                   }}
                   className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black text-white text-center tracking-tight leading-none drop-shadow-[0_4px_30px_rgba(255,255,255,0.7)]"
                 >

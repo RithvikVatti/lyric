@@ -245,10 +245,10 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     platform: os.platform(),
     isMac,
-    service: 'Lumen macOS Companion Server'
+    service: 'Lyric macOS Companion Server'
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`✨ Lumen Companion Server running on http://localhost:${PORT}`);
+  console.log(`✨ Lyric Companion Server running on http://localhost:${PORT}`);
 });

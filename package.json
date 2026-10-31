@@ -47,7 +47,7 @@
     "apple-music",
     "lockscreen"
   ],
-  "author": "Lumen Contributors",
+  "author": "Lyric Contributors",
   "license": "MIT",
   "dependencies": {
     "@ybouane/liquidglass": "^1.0.3",
