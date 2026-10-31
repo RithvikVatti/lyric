@@ -3,7 +3,8 @@ import {
   Track,
   LyricsData,
   ColorPalette,
-  RimLightConfig
+  RimLightConfig,
+  LyricStyle
 } from './types';
 import { DEMO_TRACKS, visualizerEngine, createTrackFromFile } from './services/audioManager';
 import { fetchLyricsFromLRCLIB } from './services/lrclib';
@@ -61,6 +62,7 @@ export const App: React.FC = () => {
   });
 
   const [syncOffset, setSyncOffset] = useState<number>(0);
+  const [lyricStyle, setLyricStyle] = useState<LyricStyle>('verci-single-word');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -362,6 +364,20 @@ export const App: React.FC = () => {
         handleSeek(Math.max(0, currentTime - 5));
       } else if (e.key === 'r' || e.key === 'R') {
         setRimConfig(c => ({ ...c, enabled: !c.enabled }));
+      } else if (e.key === 'l' || e.key === 'L') {
+        setLyricStyle(curr => {
+          const styles: LyricStyle[] = ['verci-single-word', 'smooth-captions', 'cinematic', 'perspective-3d'];
+          const next = styles[(styles.indexOf(curr) + 1) % styles.length];
+          const labels: Record<LyricStyle, string> = {
+            'verci-single-word': 'Single Word (Verci)',
+            'smooth-captions': 'Smooth Captions',
+            'cinematic': 'Cinematic Flow',
+            'perspective-3d': '3D Wall'
+          };
+          setSyncFeedback(`Style: ${labels[next]}`);
+          setTimeout(() => setSyncFeedback(null), 1500);
+          return next;
+        });
       } else if (e.key === '[') {
         adjustSyncOffset(-50);
       } else if (e.key === ']') {
@@ -484,6 +500,8 @@ export const App: React.FC = () => {
               currentTime={currentTime}
               duration={duration}
               palette={activePalette}
+              style={lyricStyle}
+              onChangeStyle={setLyricStyle}
               onSeek={handleSeek}
               onSearchOpen={() => setIsSearchOpen(true)}
             />
@@ -508,6 +526,50 @@ export const App: React.FC = () => {
               ))}
             </select>
           )}
+
+          {/* Quick Caption Style Pills */}
+          <div className="hidden sm:flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 backdrop-blur-md">
+            <button
+              onClick={() => setLyricStyle('verci-single-word')}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                lyricStyle === 'verci-single-word'
+                  ? 'bg-white text-black'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              ✦ Single Word
+            </button>
+            <button
+              onClick={() => setLyricStyle('smooth-captions')}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                lyricStyle === 'smooth-captions'
+                  ? 'bg-white text-black'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              Smooth Captions
+            </button>
+            <button
+              onClick={() => setLyricStyle('cinematic')}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                lyricStyle === 'cinematic'
+                  ? 'bg-white text-black'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              Cinematic
+            </button>
+            <button
+              onClick={() => setLyricStyle('perspective-3d')}
+              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                lyricStyle === 'perspective-3d'
+                  ? 'bg-white text-black'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              3D Wall
+            </button>
+          </div>
         </div>
 
         {/* Sync Calibration Controls & Hotkeys */}
@@ -535,7 +597,7 @@ export const App: React.FC = () => {
 
           <span className="hidden md:inline text-white/30">•</span>
           <span className="hidden md:inline text-white/40 font-medium">
-            Keys: Space (Play/Pause) • [ ] (Sync $\pm$50ms) • F (Fullscreen)
+            Keys: Space (Play/Pause) • L (Style) • [ ] (Sync $\pm$50ms) • F (Fullscreen)
           </span>
         </div>
       </footer>
