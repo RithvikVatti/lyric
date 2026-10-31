@@ -50,7 +50,7 @@ async function getRunningMusicApps() {
   }
 }
 
-// Query Spotify using delimiter-separated fields (immune to JSON quote escaping)
+// Query Spotify
 async function getSpotifyState() {
   const script = `
     tell application "Spotify"
@@ -67,7 +67,9 @@ async function getSpotifyState() {
       return pState & "<|>" & tName & "<|>" & tArtist & "<|>" & tAlbum & "<|>" & (tPos as string) & "<|>" & (tDur as string) & "<|>" & tArt
     end tell
   `;
+  const t0 = Date.now();
   const res = await runAppleScript(script, 2000);
+  const latencyMs = Date.now() - t0;
   const [state, track, artist, album, position, duration, artworkUrl] = res.split('<|>');
   return {
     state,
@@ -76,11 +78,13 @@ async function getSpotifyState() {
     album,
     position: parseFloat(position) || 0,
     duration: parseFloat(duration) || 0,
-    artworkUrl: artworkUrl || undefined
+    artworkUrl: artworkUrl || undefined,
+    latencyMs,
+    sampledAt: Date.now()
   };
 }
 
-// Query Apple Music using delimiter-separated fields
+// Query Apple Music
 async function getAppleMusicState() {
   const script = `
     tell application "Music"
@@ -96,7 +100,9 @@ async function getAppleMusicState() {
       return pState & "<|>" & tName & "<|>" & tArtist & "<|>" & tAlbum & "<|>" & (tPos as string) & "<|>" & (tDur as string)
     end tell
   `;
+  const t0 = Date.now();
   const res = await runAppleScript(script, 2000);
+  const latencyMs = Date.now() - t0;
   const [state, track, artist, album, position, duration] = res.split('<|>');
   return {
     state,
@@ -104,11 +110,13 @@ async function getAppleMusicState() {
     artist,
     album,
     position: parseFloat(position) || 0,
-    duration: parseFloat(duration) || 0
+    duration: parseFloat(duration) || 0,
+    latencyMs,
+    sampledAt: Date.now()
   };
 }
 
-// Now-playing endpoint
+// Now-playing endpoint with high-precision timestamping
 app.get('/api/now-playing', async (req, res) => {
   if (!isMac) {
     return res.json({

@@ -6,7 +6,7 @@ import {
   RimLightConfig,
   LyricConfig,
   LayoutMode,
-  AudioSourceType
+  LyricStyle
 } from './types';
 import { DEMO_TRACKS, visualizerEngine, createTrackFromFile } from './services/audioManager';
 import { fetchLyricsFromLRCLIB } from './services/lrclib';
@@ -17,6 +17,7 @@ import {
   sendMacOSCommand,
   fetchArtworkForTrack
 } from './services/macosBridge';
+import { globalClock } from './services/playbackClock';
 
 import { AmbientRimLights } from './components/AmbientRimLights';
 import { VisualizerCanvas } from './components/VisualizerCanvas';
@@ -32,11 +33,7 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
-  Music2,
-  Layout,
-  Radio,
-  Volume2,
-  VolumeX
+  Clock
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -48,6 +45,7 @@ export const App: React.FC = () => {
   const [duration, setDuration] = useState<number>(DEMO_TRACKS[0].duration);
   const [lyrics, setLyrics] = useState<LyricsData | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState<boolean>(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Audio Visualizer Energy State
   const [audioEnergy, setAudioEnergy] = useState({ bass: 0.1, mid: 0.1, treble: 0.1, overall: 0.1 });
@@ -67,7 +65,7 @@ export const App: React.FC = () => {
   });
 
   const [lyricConfig, setLyricConfig] = useState<LyricConfig>({
-    style: 'cinematic',
+    style: 'verci-single-word', // Default to signature 1-word-at-a-time kinetic stage!
     fontSize: 'large',
     wordSync: true,
     syncOffset: 0,
@@ -83,12 +81,17 @@ export const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
+  // Sync manual offset with globalClock
+  useEffect(() => {
+    globalClock.setManualOffset(lyricConfig.syncOffset);
+  }, [lyricConfig.syncOffset]);
+
   // Derived effective palette based on preset
   const activePalette = rimConfig.palettePreset === 'album-art'
     ? extractedPalette
     : PRESET_PALETTES[rimConfig.palettePreset] || extractedPalette;
 
-  // 1. Initialize audio element and visualizer engine
+  // 1. Initialize HTML5 Audio & Visualizer Engine
   useEffect(() => {
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
@@ -101,7 +104,9 @@ export const App: React.FC = () => {
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
+      if (!currentTrack.source.startsWith('macos-')) {
+        globalClock.sync(audio.currentTime, !audio.paused, 0);
+      }
     };
 
     const handleEnded = () => {
@@ -120,36 +125,39 @@ export const App: React.FC = () => {
       audio.removeEventListener('ended', handleEnded);
       audio.pause();
     };
-  }, []);
+  }, [currentTrack]);
 
-  // 2. Loop audio energy updates at 60fps for reactive lighting
+  // 2. High-Precision 120Hz / 60Hz RequestAnimationFrame Tick Loop
+  // Updates currentTime every single frame without stutter
   useEffect(() => {
+    let loopId: number;
+
     const tick = () => {
+      const nowPos = globalClock.now();
+      setCurrentTime(nowPos);
+
       if (isPlaying) {
         const energy = visualizerEngine.getAudioEnergy();
         setAudioEnergy(energy);
       } else {
         setAudioEnergy({ bass: 0.05, mid: 0.05, treble: 0.05, overall: 0.05 });
       }
-      animFrameRef.current = requestAnimationFrame(tick);
+
+      loopId = requestAnimationFrame(tick);
     };
 
-    animFrameRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
+    loopId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(loopId);
   }, [isPlaying]);
 
   // 3. Extract album palette and load lyrics when currentTrack changes
   useEffect(() => {
     let isCancelled = false;
 
-    // Extract dynamic palette from album cover
     extractPaletteFromImage(currentTrack.albumArt).then((palette) => {
       if (!isCancelled) setExtractedPalette(palette);
     });
 
-    // Fetch synced lyrics from LRCLIB
     setLyricsLoading(true);
     fetchLyricsFromLRCLIB(
       currentTrack.title,
@@ -163,7 +171,6 @@ export const App: React.FC = () => {
       }
     });
 
-    // Load audio stream if track has audioUrl
     if (audioRef.current && currentTrack.audioUrl) {
       if (audioRef.current.src !== currentTrack.audioUrl) {
         audioRef.current.src = currentTrack.audioUrl;
@@ -179,24 +186,27 @@ export const App: React.FC = () => {
     };
   }, [currentTrack]);
 
-  // 4. macOS Bridge integration polling (every 1.5s)
+  // 4. Ultra-Fast macOS Bridge Polling (every 350ms) with Latency Compensation
   useEffect(() => {
     let timer: any;
+    let isMounted = true;
 
     const pollBridge = async () => {
       const isOnline = await checkBridgeHealth();
+      if (!isMounted) return;
       setIsMacBridgeOnline(isOnline);
 
       if (isOnline) {
         const macState = await fetchMacOSNowPlaying();
         if (macState && (macState.state === 'playing' || macState.state === 'paused')) {
           const macSource = macState.activeApp === 'Spotify' ? 'macos-spotify' : 'macos-music';
+          const isPlayingState = macState.state === 'playing';
+
           if (
             currentTrack.title !== macState.track ||
             currentTrack.artist !== macState.artist ||
             currentTrack.source !== macSource
           ) {
-            // Auto fetch official high-res artwork if missing
             let artwork = macState.artworkUrl;
             if (!artwork && macState.track && macState.artist) {
               artwork = (await fetchArtworkForTrack(macState.track, macState.artist)) || undefined;
@@ -210,29 +220,39 @@ export const App: React.FC = () => {
               albumArt: artwork || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
               duration: macState.duration || 200,
               position: macState.position || 0,
-              isPlaying: macState.state === 'playing',
+              isPlaying: isPlayingState,
               source: macSource,
               badge: `${macState.activeApp}`
             });
-            setCurrentTime(macState.position);
+
             setDuration(macState.duration);
-            setIsPlaying(macState.state === 'playing');
+            setIsPlaying(isPlayingState);
+
+            // Sync high-precision clock with latency compensation
+            globalClock.sync(macState.position, isPlayingState, macState.latencyMs || 180);
           } else {
-            // Update time & play state
-            setCurrentTime(macState.position);
-            setIsPlaying(macState.state === 'playing');
-            // If artwork was previously missing but now available
+            setIsPlaying(isPlayingState);
+
+            // High-precision clock sync
+            globalClock.sync(macState.position, isPlayingState, macState.latencyMs || 180);
+
             if (macState.artworkUrl && currentTrack.albumArt !== macState.artworkUrl) {
               setCurrentTrack(t => ({ ...t, albumArt: macState.artworkUrl! }));
             }
           }
         }
       }
-      timer = setTimeout(pollBridge, 1500);
+
+      if (isMounted) {
+        timer = setTimeout(pollBridge, 350); // fast 350ms sample rate
+      }
     };
 
     pollBridge();
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [currentTrack]);
 
   // Playback control handlers
@@ -242,6 +262,7 @@ export const App: React.FC = () => {
       const targetApp = currentTrack.source === 'macos-spotify' ? 'Spotify' : 'Music';
       sendMacOSCommand('play-pause', targetApp);
       setIsPlaying(!isPlaying);
+      globalClock.sync(currentTime, !isPlaying, 0);
       return;
     }
 
@@ -249,16 +270,19 @@ export const App: React.FC = () => {
       if (isPlaying) {
         audioRef.current.pause();
         setIsPlaying(false);
+        globalClock.sync(audioRef.current.currentTime, false, 0);
       } else {
         audioRef.current.play().then(() => {
           setIsPlaying(true);
+          globalClock.sync(audioRef.current!.currentTime, true, 0);
         }).catch(err => {
           console.warn('Audio play error:', err);
-          setIsPlaying(true); // fall back to simulated timer
+          setIsPlaying(true);
+          globalClock.sync(currentTime, true, 0);
         });
       }
     }
-  }, [isPlaying, currentTrack]);
+  }, [isPlaying, currentTrack, currentTime]);
 
   const handleNext = useCallback(() => {
     if (currentTrack.source.startsWith('macos-')) {
@@ -269,7 +293,7 @@ export const App: React.FC = () => {
     const nextIdx = (currentTrackIndex + 1) % DEMO_TRACKS.length;
     setCurrentTrackIndex(nextIdx);
     setCurrentTrack(DEMO_TRACKS[nextIdx]);
-    setCurrentTime(0);
+    globalClock.reset(0, true);
   }, [currentTrackIndex, currentTrack]);
 
   const handlePrev = useCallback(() => {
@@ -281,7 +305,7 @@ export const App: React.FC = () => {
     const prevIdx = (currentTrackIndex - 1 + DEMO_TRACKS.length) % DEMO_TRACKS.length;
     setCurrentTrackIndex(prevIdx);
     setCurrentTrack(DEMO_TRACKS[prevIdx]);
-    setCurrentTime(0);
+    globalClock.reset(0, true);
   }, [currentTrackIndex, currentTrack]);
 
   const handleSeek = useCallback((seconds: number) => {
@@ -292,28 +316,29 @@ export const App: React.FC = () => {
     if (audioRef.current && isFinite(seconds)) {
       audioRef.current.currentTime = seconds;
     }
+    globalClock.reset(seconds, isPlaying);
     setCurrentTime(seconds);
-  }, [currentTrack]);
+  }, [currentTrack, isPlaying]);
 
   const handleSelectTrack = useCallback((index: number) => {
     if (index >= 0 && index < DEMO_TRACKS.length) {
       setCurrentTrackIndex(index);
       setCurrentTrack(DEMO_TRACKS[index]);
-      setCurrentTime(0);
+      globalClock.reset(0, true);
       setIsPlaying(true);
     }
   }, []);
 
   const handleSelectSearchedTrack = useCallback((track: Track) => {
     setCurrentTrack(track);
-    setCurrentTime(0);
+    globalClock.reset(0, true);
     setIsPlaying(true);
   }, []);
 
   const handleFileUpload = useCallback((file: File) => {
     const localTrack = createTrackFromFile(file);
     setCurrentTrack(localTrack);
-    setCurrentTime(0);
+    globalClock.reset(0, true);
     setIsPlaying(true);
     setIsSettingsOpen(false);
   }, []);
@@ -326,10 +351,20 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Sync calibration adjustment helper
+  const adjustSyncOffset = useCallback((deltaMs: number) => {
+    setLyricConfig(c => {
+      const newOffset = c.syncOffset + deltaMs;
+      const label = newOffset > 0 ? `+${newOffset}ms` : `${newOffset}ms`;
+      setSyncFeedback(`Sync: ${label}`);
+      setTimeout(() => setSyncFeedback(null), 1500);
+      return { ...c, syncOffset: newOffset };
+    });
+  }, []);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing inside input
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
 
       if (e.code === 'Space') {
@@ -345,20 +380,28 @@ export const App: React.FC = () => {
         e.preventDefault();
         handleSeek(Math.max(0, currentTime - 5));
       } else if (e.key === 'l' || e.key === 'L') {
-        // Toggle lyric style
+        // Cycle styles
         setLyricConfig(c => ({
           ...c,
-          style: c.style === 'cinematic' ? 'perspective-3d' : c.style === 'perspective-3d' ? 'focus-line' : 'cinematic'
+          style:
+            c.style === 'verci-single-word'
+              ? 'smooth-captions'
+              : c.style === 'smooth-captions'
+              ? 'cinematic'
+              : 'verci-single-word'
         }));
       } else if (e.key === 'r' || e.key === 'R') {
-        // Toggle rim lighting
         setRimConfig(c => ({ ...c, enabled: !c.enabled }));
+      } else if (e.key === '[') {
+        adjustSyncOffset(-50);
+      } else if (e.key === ']') {
+        adjustSyncOffset(50);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayPause, toggleFullscreen, handleSeek, currentTime, duration]);
+  }, [handlePlayPause, toggleFullscreen, handleSeek, currentTime, duration, adjustSyncOffset]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans',sans-serif]">
@@ -369,7 +412,7 @@ export const App: React.FC = () => {
         isPlaying={isPlaying}
       />
 
-      {/* 2. Ambient Screen-Edge Rim Lighting (Iconic trylumn.xyz feature) */}
+      {/* 2. Ambient Screen-Edge Rim Lighting */}
       <AmbientRimLights
         config={rimConfig}
         palette={activePalette}
@@ -377,9 +420,18 @@ export const App: React.FC = () => {
         isPlaying={isPlaying}
       />
 
+      {/* Floating Sync Calibration Feedback Pill */}
+      {syncFeedback && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="glass-pill px-4 py-2 rounded-full text-xs font-mono font-bold text-cyan-300 shadow-2xl flex items-center gap-2 border border-cyan-400/40">
+            <Clock className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+            <span>{syncFeedback}</span>
+          </div>
+        </div>
+      )}
+
       {/* 3. Top Floating Glass Header Bar */}
       <header className="relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-none">
-        {/* Brand identity */}
         <div className="flex items-center gap-3 pointer-events-auto">
           <div
             className="w-9 h-9 rounded-2xl glass-panel flex items-center justify-center text-cyan-400 shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition"
@@ -398,12 +450,11 @@ export const App: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] text-white/50 tracking-wide font-medium">
-              Ambient Rim & Kinetic Synced Lyrics
+              Kinetic Single-Word & Ambient Rim
             </p>
           </div>
         </div>
 
-        {/* Dynamic Island in Top Center (when in mini-island mode or for lockscreen layout) */}
         {layoutMode === 'mini-island' ? (
           <div className="pointer-events-auto">
             <DynamicIsland
@@ -418,9 +469,7 @@ export const App: React.FC = () => {
           </div>
         ) : null}
 
-        {/* Action Controls */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Quick Rim Light Toggle */}
           <button
             onClick={() => setRimConfig(c => ({ ...c, enabled: !c.enabled }))}
             className={`p-2.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 transition ${
@@ -432,7 +481,6 @@ export const App: React.FC = () => {
             <span className="hidden sm:inline">Rim Glow</span>
           </button>
 
-          {/* Search any song */}
           <button
             onClick={() => setIsSearchOpen(true)}
             className="p-2.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 text-white/80 hover:text-white transition"
@@ -442,7 +490,6 @@ export const App: React.FC = () => {
             <span className="hidden sm:inline">Search Songs</span>
           </button>
 
-          {/* Settings Modal */}
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-2.5 rounded-2xl glass-button text-white/80 hover:text-white transition"
@@ -451,7 +498,6 @@ export const App: React.FC = () => {
             <Sliders className="w-4 h-4" />
           </button>
 
-          {/* Fullscreen */}
           <button
             onClick={toggleFullscreen}
             className="p-2.5 rounded-2xl glass-button text-white/80 hover:text-white transition"
@@ -464,10 +510,8 @@ export const App: React.FC = () => {
 
       {/* 4. Main Stage View Layouts */}
       <main className="relative z-20 flex-1 w-full h-[calc(100vh-120px)] overflow-hidden px-4 sm:px-8 md:px-12 flex items-center justify-center">
-        {/* VIEW 1: Split Screen (Player on Left, Synced Lyrics on Right) */}
         {layoutMode === 'split' && (
           <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center py-2">
-            {/* Left: Liquid Glass Now Playing Card */}
             <div className="lg:col-span-5 flex justify-center items-center h-full">
               <LiquidGlassPlayer
                 track={currentTrack}
@@ -488,8 +532,7 @@ export const App: React.FC = () => {
               />
             </div>
 
-            {/* Right: Synced Kinetic Lyrics Stream */}
-            <div className="lg:col-span-7 h-full flex flex-col justify-center">
+            <div className="lg:col-span-7 h-full flex flex-col justify-center overflow-hidden">
               <SyncedLyricsView
                 lyrics={lyrics}
                 currentTime={currentTime}
@@ -503,7 +546,6 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* VIEW 2: Lock Screen Center (Floating Card centered with Rim Glow) */}
         {layoutMode === 'lockscreen' && (
           <div className="w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-300">
             <LiquidGlassPlayer
@@ -526,7 +568,6 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* VIEW 3: Fullscreen Kinetic Lyrics Stage */}
         {layoutMode === 'fullscreen-lyrics' && (
           <div className="w-full h-full max-w-4xl mx-auto flex flex-col justify-center animate-in fade-in duration-300">
             <SyncedLyricsView
@@ -541,7 +582,6 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* VIEW 4: Mini Island / Floating Center */}
         {layoutMode === 'mini-island' && (
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-24 h-24 rounded-full p-1 border-2 border-white/20 shadow-2xl relative">
@@ -563,7 +603,6 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* VIEW 5: Pure Rim Lighting (Stealth Mode) */}
         {layoutMode === 'rim-only' && (
           <div
             onClick={() => setLayoutMode('split')}
@@ -577,31 +616,69 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* 5. Bottom Status Dock */}
-      <footer className="relative z-30 w-full px-6 py-3 flex items-center justify-between text-xs text-white/40 pointer-events-none">
-        <div className="flex items-center gap-3 pointer-events-auto">
-          {/* Layout switcher buttons */}
-          {(['split', 'lockscreen', 'fullscreen-lyrics'] as LayoutMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setLayoutMode(mode)}
-              className={`px-3 py-1 rounded-xl transition text-[11px] font-medium capitalize border ${
-                layoutMode === mode
-                  ? 'border-cyan-400/60 bg-white/15 text-white font-semibold'
-                  : 'border-transparent text-white/50 hover:text-white/80'
-              }`}
-            >
-              {mode.replace('-', ' ')}
-            </button>
-          ))}
+      {/* 5. Bottom Status Dock with Quick Caption Mode Switcher */}
+      <footer className="relative z-30 w-full px-6 py-3 flex items-center justify-between text-xs text-white/50 pointer-events-none">
+        {/* Caption Style Switcher */}
+        <div className="flex items-center gap-1.5 pointer-events-auto bg-black/40 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
+          <button
+            onClick={() => setLyricConfig(c => ({ ...c, style: 'verci-single-word' }))}
+            className={`px-3 py-1 rounded-xl transition text-[11px] font-bold ${
+              lyricConfig.style === 'verci-single-word'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
+                : 'text-white/50 hover:text-white'
+            }`}
+          >
+            ✦ Single Word (Verci)
+          </button>
+          <button
+            onClick={() => setLyricConfig(c => ({ ...c, style: 'smooth-captions' }))}
+            className={`px-3 py-1 rounded-xl transition text-[11px] font-bold ${
+              lyricConfig.style === 'smooth-captions'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
+                : 'text-white/50 hover:text-white'
+            }`}
+          >
+            Smooth Captions
+          </button>
+          <button
+            onClick={() => setLyricConfig(c => ({ ...c, style: 'cinematic' }))}
+            className={`px-3 py-1 rounded-xl transition text-[11px] font-bold ${
+              lyricConfig.style === 'cinematic'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
+                : 'text-white/50 hover:text-white'
+            }`}
+          >
+            Cinematic Flow
+          </button>
         </div>
 
-        <div className="flex items-center gap-4 pointer-events-auto text-[11px]">
-          <span className="hidden sm:inline font-mono">
-            {lyrics ? `Lyrics: ${lyrics.source || 'LRCLIB'}` : lyricsLoading ? 'Fetching lyrics...' : 'No lyrics'}
+        {/* Sync Calibration Controls & Hotkeys */}
+        <div className="flex items-center gap-3 pointer-events-auto text-[11px]">
+          <div className="hidden sm:flex items-center gap-1 font-mono">
+            <span className="text-white/40">Sync:</span>
+            <button
+              onClick={() => adjustSyncOffset(-50)}
+              className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white font-bold"
+              title="Shift earlier (-50ms) [ key"
+            >
+              -50ms
+            </button>
+            <span className="text-cyan-300 font-bold px-1">
+              {lyricConfig.syncOffset > 0 ? `+${lyricConfig.syncOffset}` : lyricConfig.syncOffset}ms
+            </span>
+            <button
+              onClick={() => adjustSyncOffset(50)}
+              className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white font-bold"
+              title="Shift later (+50ms) ] key"
+            >
+              +50ms
+            </button>
+          </div>
+
+          <span className="hidden md:inline text-white/30">•</span>
+          <span className="hidden md:inline text-white/40 font-medium">
+            Keys: Space (Play) • L (Style) • [ ] (Sync $\pm$50ms)
           </span>
-          <span className="hidden md:inline">•</span>
-          <span className="hidden md:inline">Space: Play/Pause • F: Fullscreen • L: Lyric Style • R: Rim Glow</span>
         </div>
       </footer>
 

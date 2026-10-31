@@ -51,7 +51,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
   isMacBridgeOnline,
   onFileUpload
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'rim' | 'lyrics' | 'layout' | 'source' | 'about'>('rim');
+  const [activeTab, setActiveTab] = React.useState<'rim' | 'lyrics' | 'layout' | 'source' | 'about'>('lyrics');
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
@@ -64,7 +64,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
       <div
         className="glass-panel w-full max-w-2xl max-h-[85vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-white/15"
         style={{
@@ -79,7 +79,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Lumen Settings & Controls</h2>
-              <p className="text-xs text-white/50">Ambient rim lighting, lyric engine & integrations</p>
+              <p className="text-xs text-white/50">Kinetic captions, sync calibration & ambient glow</p>
             </div>
           </div>
           <button
@@ -93,6 +93,17 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 px-6 py-2.5 bg-black/40 border-b border-white/10 text-xs font-semibold overflow-x-auto">
           <button
+            onClick={() => setActiveTab('lyrics')}
+            className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-2 shrink-0 ${
+              activeTab === 'lyrics'
+                ? 'bg-white/20 text-white shadow-sm'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Type className="w-3.5 h-3.5 text-cyan-400" />
+            Lyrics & Captions
+          </button>
+          <button
             onClick={() => setActiveTab('rim')}
             className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-2 shrink-0 ${
               activeTab === 'rim'
@@ -102,17 +113,6 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
           >
             <Sun className="w-3.5 h-3.5 text-amber-400" />
             Rim Lighting
-          </button>
-          <button
-            onClick={() => setActiveTab('lyrics')}
-            className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-2 shrink-0 ${
-              activeTab === 'lyrics'
-                ? 'bg-white/20 text-white shadow-sm'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Type className="w-3.5 h-3.5 text-cyan-400" />
-            Lyrics Engine
           </button>
           <button
             onClick={() => setActiveTab('layout')}
@@ -151,13 +151,121 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-sm text-white/80">
+          {/* TAB: LYRIC ENGINE & CAPTIONS */}
+          {activeTab === 'lyrics' && (
+            <div className="space-y-6">
+              {/* Lyric Style Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
+                  Animation & Caption Mode
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    {
+                      id: 'verci-single-word',
+                      title: 'Verci Single-Word Stage',
+                      desc: 'Signature 1-word-at-a-time kinetic pop with spring physics, motion blur & ghost preview'
+                    },
+                    {
+                      id: 'smooth-captions',
+                      title: 'Smooth Captions (Viral Pop)',
+                      desc: 'Sentence view where active words bounce and glow dynamically to the rhythm'
+                    },
+                    {
+                      id: 'cinematic',
+                      title: 'Cinematic Flow',
+                      desc: 'Apple Music multi-line fluid typography with smooth auto-scroll'
+                    },
+                    {
+                      id: 'perspective-3d',
+                      title: 'Verci 3D Wall',
+                      desc: '3D stacked cards tilting in dynamic perspective space'
+                    }
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setLyricConfig(c => ({ ...c, style: s.id as LyricStyle }))}
+                      className={`p-3.5 rounded-2xl text-left border transition ${
+                        lyricConfig.style === s.id
+                          ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-sm'
+                          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-bold text-white text-sm">{s.title}</h5>
+                        {lyricConfig.style === s.id && <Check className="w-4 h-4 text-cyan-400" />}
+                      </div>
+                      <p className="text-[11px] text-white/50 mt-1 leading-snug">{s.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sync Calibration Offset Slider */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <div className="flex justify-between items-center text-xs font-semibold mb-2">
+                  <div>
+                    <span className="text-white font-bold">Sync Timing Calibration</span>
+                    <p className="text-[11px] text-white/50">
+                      Fine-tune sync timing. Also use [ and ] keyboard shortcuts!
+                    </p>
+                  </div>
+                  <span className="font-mono px-3 py-1 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-bold">
+                    {lyricConfig.syncOffset > 0 ? `+${lyricConfig.syncOffset}` : lyricConfig.syncOffset} ms
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="-2000"
+                  max="2000"
+                  step="50"
+                  value={lyricConfig.syncOffset}
+                  onChange={(e) => setLyricConfig(c => ({ ...c, syncOffset: parseInt(e.target.value) }))}
+                  className="w-full accent-cyan-400 cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                  <span>Lyrics earlier (-2.0s)</span>
+                  <button
+                    onClick={() => setLyricConfig(c => ({ ...c, syncOffset: 0 }))}
+                    className="hover:text-cyan-300 underline font-semibold"
+                  >
+                    Reset (0ms)
+                  </button>
+                  <span>Lyrics later (+2.0s)</span>
+                </div>
+              </div>
+
+              {/* Typography Scale */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
+                  Typography Size Scale
+                </label>
+                <div className="flex gap-2">
+                  {(['normal', 'large', 'massive'] as FontSizeSetting[]).map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setLyricConfig(c => ({ ...c, fontSize: size }))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize border transition ${
+                        lyricConfig.fontSize === size
+                          ? 'border-cyan-400 bg-white/20 text-white font-bold'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB: RIM LIGHTING */}
           {activeTab === 'rim' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
                 <div>
                   <h4 className="font-semibold text-white">Enable Screen-Edge Rim Lighting</h4>
-                  <p className="text-xs text-white/50">Simulates Lumn ambient glow around display borders</p>
+                  <p className="text-xs text-white/50">Ambient rim lighting around display borders (trylumn.xyz)</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -170,40 +278,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
                 </label>
               </div>
 
-              {/* Lighting Mode */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
-                  Lighting Animation Mode
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(['aurora', 'pulse', 'wave', 'liquid', 'static'] as RimMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setRimConfig(c => ({ ...c, mode }))}
-                      className={`p-3 rounded-2xl text-xs font-medium capitalize text-left transition border ${
-                        rimConfig.mode === mode
-                          ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-sm'
-                          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <span className="block font-semibold">{mode}</span>
-                      <span className="text-[10px] text-white/50 mt-0.5">
-                        {mode === 'aurora'
-                          ? 'Rotating ambient waves'
-                          : mode === 'pulse'
-                          ? 'Beat & bass reactive'
-                          : mode === 'wave'
-                          ? 'Smooth perimeter tide'
-                          : mode === 'liquid'
-                          ? 'Organic fluid pools'
-                          : 'Clean static glow'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sliders: Thickness, Blur, Intensity, Reactivity */}
+              {/* Sliders */}
               <div className="space-y-4 bg-white/5 p-4 rounded-2xl border border-white/10">
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
@@ -237,7 +312,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Brightness / Intensity</span>
+                    <span>Glow Brightness</span>
                     <span className="font-mono text-cyan-400">{Math.round(rimConfig.intensity * 100)}%</span>
                   </div>
                   <input
@@ -249,24 +324,9 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
                     className="w-full accent-cyan-400 cursor-pointer"
                   />
                 </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Beat & Bass Sensitivity</span>
-                    <span className="font-mono text-cyan-400">{Math.round(rimConfig.beatReactivity * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={Math.round(rimConfig.beatReactivity * 100)}
-                    onChange={(e) => setRimConfig(c => ({ ...c, beatReactivity: parseInt(e.target.value) / 100 }))}
-                    className="w-full accent-cyan-400 cursor-pointer"
-                  />
-                </div>
               </div>
 
-              {/* Color Palette Theme Presets */}
+              {/* Palette presets */}
               <div>
                 <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
                   Color Palette Preset
@@ -303,111 +363,7 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
             </div>
           )}
 
-          {/* TAB: LYRIC ENGINE */}
-          {activeTab === 'lyrics' && (
-            <div className="space-y-6">
-              {/* Lyric Style */}
-              <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
-                  Display & Animation Style
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { id: 'cinematic', title: 'Cinematic Flow', desc: 'Apple Music style with fluid line sweeps and depth blur' },
-                    { id: 'perspective-3d', title: 'Verci 3D Wall', desc: '3D stacked cards tilting in dynamic perspective space' },
-                    { id: 'focus-line', title: 'Focus Line', desc: 'Single massive karaoke text with upcoming preview' }
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setLyricConfig(c => ({ ...c, style: s.id as LyricStyle }))}
-                      className={`p-3.5 rounded-2xl text-left border transition ${
-                        lyricConfig.style === s.id
-                          ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-sm'
-                          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <h5 className="font-semibold text-white text-sm">{s.title}</h5>
-                      <p className="text-[11px] text-white/50 mt-1 leading-snug">{s.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Font Size & Word Sync */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                  <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
-                    Typography Scale
-                  </label>
-                  <div className="flex gap-2">
-                    {(['normal', 'large', 'massive'] as FontSizeSetting[]).map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setLyricConfig(c => ({ ...c, fontSize: size }))}
-                        className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize border transition ${
-                          lyricConfig.fontSize === size
-                            ? 'border-cyan-400 bg-white/20 text-white font-bold'
-                            : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                  <div>
-                    <h5 className="font-semibold text-white text-xs">Per-Word Kinetic Sync</h5>
-                    <p className="text-[11px] text-white/50">Highlight individual words as they are sung</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={lyricConfig.wordSync}
-                      onChange={(e) => setLyricConfig(c => ({ ...c, wordSync: e.target.checked }))}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500" />
-                  </label>
-                </div>
-              </div>
-
-              {/* Synchronization Offset Adjustment Slider */}
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                <div className="flex justify-between items-center text-xs font-semibold mb-2">
-                  <div>
-                    <span className="text-white">Timing Calibration Offset</span>
-                    <p className="text-[11px] text-white/50">Advance or delay lyrics to match audio timing</p>
-                  </div>
-                  <span className="font-mono px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-cyan-300">
-                    {lyricConfig.syncOffset > 0 ? `+${lyricConfig.syncOffset}` : lyricConfig.syncOffset} ms
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="-3000"
-                  max="3000"
-                  step="100"
-                  value={lyricConfig.syncOffset}
-                  onChange={(e) => setLyricConfig(c => ({ ...c, syncOffset: parseInt(e.target.value) }))}
-                  className="w-full accent-cyan-400 cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-white/40 mt-1">
-                  <span>Lyrics earlier (-3.0s)</span>
-                  <button
-                    onClick={() => setLyricConfig(c => ({ ...c, syncOffset: 0 }))}
-                    className="hover:text-cyan-300 underline"
-                  >
-                    Reset (0ms)
-                  </button>
-                  <span>Lyrics later (+3.0s)</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: LAYOUT & VIEWS */}
+          {/* TAB: LAYOUT */}
           {activeTab === 'layout' && (
             <div className="space-y-4">
               <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider">
@@ -418,27 +374,22 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
                   {
                     id: 'split',
                     name: 'Split Stage',
-                    desc: 'Side-by-side liquid-glass player and scrolling kinetic lyrics'
+                    desc: 'Side-by-side liquid-glass player and kinetic lyrics'
                   },
                   {
                     id: 'lockscreen',
                     name: 'Lock Screen Center',
-                    desc: 'Floating centered frosted glass card with edge rim lighting (trylumn.xyz vibe)'
+                    desc: 'Centered frosted glass player with ambient rim glow'
                   },
                   {
                     id: 'fullscreen-lyrics',
-                    name: 'Fullscreen Lyrics',
-                    desc: 'Immersive edge-to-edge animated lyrics stage'
+                    name: 'Fullscreen Lyrics Stage',
+                    desc: 'Immersive edge-to-edge word and lyric animations'
                   },
                   {
                     id: 'mini-island',
                     name: 'Dynamic Island',
                     desc: 'Minimal floating pill at top of screen with live lyric subtitle'
-                  },
-                  {
-                    id: 'rim-only',
-                    name: 'Rim Lighting Only',
-                    desc: 'Minimalist ambient backlight only; all player widgets hidden'
                   }
                 ].map((item) => (
                   <button
@@ -461,17 +412,16 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
             </div>
           )}
 
-          {/* TAB: MUSIC SOURCES */}
+          {/* TAB: SOURCES */}
           {activeTab === 'source' && (
             <div className="space-y-6">
-              {/* macOS Native Integration status */}
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <Apple className="w-5 h-5 text-white/90" />
                     <div>
                       <h4 className="font-semibold text-white">macOS Spotify & Apple Music Bridge</h4>
-                      <p className="text-xs text-white/50">Polls macOS apps via AppleScript in real-time</p>
+                      <p className="text-xs text-white/50">High-speed AppleScript poller with clock interpolation</p>
                     </div>
                   </div>
                   <span
@@ -484,11 +434,6 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
                     {isMacBridgeOnline ? 'Bridge Connected' : 'Companion Offline'}
                   </span>
                 </div>
-
-                <p className="text-xs text-white/60 leading-relaxed">
-                  To mirror what is playing in Apple Music or Spotify on your Mac with zero tokens or logins:
-                  run <code className="px-1.5 py-0.5 rounded bg-black/50 text-cyan-300 font-mono">npm run start</code> in terminal!
-                </p>
               </div>
 
               {/* Local File Dropzone */}
@@ -529,27 +474,8 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
                 <h4 className="font-bold text-white text-base">Lumen — 100% Free & Open Source</h4>
                 <p className="text-xs text-white/70 leading-relaxed">
-                  Lumen recreates the aesthetic of modern macOS utilities like <b>trylumn.xyz</b> (ambient edge lighting)
-                  and <b>verci.xyz</b> (real-time kinetic synced lyrics) in a clean, open-source architecture.
+                  Open-source fusion of <b>trylumn.xyz</b> ambient lighting and <b>verci.xyz</b> word-by-word kinetic lyrics.
                 </p>
-                <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
-                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-white/40 block text-[10px]">Lyric Engine</span>
-                    <span className="font-semibold text-white">LRCLIB (lrclib.net)</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-white/40 block text-[10px]">License</span>
-                    <span className="font-semibold text-white">MIT Open Source</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-white/40 block text-[10px]">Integrations</span>
-                    <span className="font-semibold text-white">Spotify & Apple Music</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-white/40 block text-[10px]">Audio Reactive</span>
-                    <span className="font-semibold text-white">Web Audio API (FFT)</span>
-                  </div>
-                </div>
               </div>
             </div>
           )}

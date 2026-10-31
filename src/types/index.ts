@@ -42,8 +42,8 @@ export interface Track {
   position: number; // in seconds
   isPlaying: boolean;
   source: AudioSourceType;
-  audioUrl?: string; // for web audio playback
-  badge?: string; // e.g. 'Lossless', 'Hi-Res', 'Master'
+  audioUrl?: string;
+  badge?: string;
 }
 
 export interface ColorPalette {
@@ -57,17 +57,23 @@ export interface ColorPalette {
 
 export type RimMode = 'aurora' | 'pulse' | 'wave' | 'liquid' | 'static';
 export type PalettePreset = 'album-art' | 'neon' | 'sunset' | 'indigo' | 'emerald' | 'amber' | 'monochrome';
-export type LyricStyle = 'cinematic' | 'perspective-3d' | 'focus-line' | 'minimal';
+
+export type LyricStyle =
+  | 'verci-single-word' // Signature Verci: One massive word at a time with spring physics
+  | 'smooth-captions'   // Dynamic viral caption pop: word bounces & glows in sentence
+  | 'cinematic'         // Apple Music multi-line fluid typography
+  | 'perspective-3d';   // 3D perspective wall
+
 export type FontSizeSetting = 'normal' | 'large' | 'massive';
 export type LayoutMode = 'split' | 'lockscreen' | 'fullscreen-lyrics' | 'mini-island' | 'rim-only';
 
 export interface RimLightConfig {
   enabled: boolean;
   mode: RimMode;
-  thickness: number;      // 4px to 48px
-  blur: number;           // 8px to 100px
-  intensity: number;      // 0.2 to 2.0
-  beatReactivity: number; // 0 to 1.0
+  thickness: number;
+  blur: number;
+  intensity: number;
+  beatReactivity: number;
   palettePreset: PalettePreset;
   customPalette?: Partial<ColorPalette>;
 }
@@ -89,5 +95,7 @@ export interface MacOSNowPlayingResponse {
   position: number;
   duration: number;
   artworkUrl?: string;
+  latencyMs?: number;
+  sampledAt?: number;
   error?: string;
 }

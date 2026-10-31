@@ -9,23 +9,19 @@ export function parseLRC(rawLrc: string, totalDuration: number = 0): LyricLine[]
   const lines = rawLrc.split(/\r?\n/);
   const parsedLines: { time: number; text: string; words?: WordTiming[] }[] = [];
 
-  // Match: [00:12.34] or [01:23.456]
   const timeRegex = /\[(\d{2,}):(\d{2}(?:\.\d{1,3})?)\]/g;
-  // Match word tags: <00:12.34> word or <1234> word
   const wordTagRegex = /<(\d{2,}):(\d{2}(?:\.\d{1,3})?)>\s*([^<]+)/g;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Skip metadata tags like [ar:artist], [ti:title], [length:03:45], etc.
     if (/^\[(ti|ar|al|au|length|by|offset|re|ve):/i.test(trimmed)) {
       continue;
     }
 
     const matches = Array.from(trimmed.matchAll(timeRegex));
     if (matches.length > 0) {
-      // The text is whatever is after all time tags
       const pureText = trimmed.replace(timeRegex, '').trim();
 
       // Check if pureText has word timestamps <mm:ss.xx>
@@ -38,8 +34,7 @@ export function parseLRC(rawLrc: string, totalDuration: number = 0): LyricLine[]
           const sec = parseFloat(wm[2]);
           const start = min * 60 + sec;
           const wordText = wm[3].trim();
-          // next word start or estimate
-          let nextStart = start + 0.4;
+          let nextStart = start + 0.35;
           if (idx < wordMatches.length - 1) {
             const nextMin = parseFloat(wordMatches[idx + 1][1]);
             const nextSec = parseFloat(wordMatches[idx + 1][2]);
@@ -70,27 +65,25 @@ export function parseLRC(rawLrc: string, totalDuration: number = 0): LyricLine[]
   // Sort by time ascending
   parsedLines.sort((a, b) => a.time - b.time);
 
-  // Filter out duplicate identical consecutive lines
+  // Filter out duplicates
   const uniqueLines = parsedLines.filter((l, idx) => {
     if (idx === 0) return true;
     return !(l.time === parsedLines[idx - 1].time && l.text === parsedLines[idx - 1].text);
   });
 
-  // Calculate endTime for each line and generate word-level timings if missing
+  // Calculate endTime for each line and generate musical word-level timings
   const result: LyricLine[] = uniqueLines.map((line, idx) => {
     const nextLine = uniqueLines[idx + 1];
     let endTime: number;
 
     if (nextLine) {
-      // If gap is longer than 7 seconds, end line after ~4.5 seconds so it feels natural
       const gap = nextLine.time - line.time;
-      endTime = gap > 7 ? line.time + 4.5 : nextLine.time;
+      endTime = gap > 6.5 ? line.time + 4.2 : nextLine.time;
     } else {
-      endTime = totalDuration > line.time ? Math.min(line.time + 6, totalDuration) : line.time + 5;
+      endTime = totalDuration > line.time ? Math.min(line.time + 5.5, totalDuration) : line.time + 4.5;
     }
 
-    // If no explicit word timings exist, generate realistic word interpolation
-    const words = line.words || interpolateWords(line.text, line.time, endTime);
+    const words = line.words || interpolateMusicalWords(line.text, line.time, endTime);
 
     return {
       id: idx + 1,
@@ -105,24 +98,43 @@ export function parseLRC(rawLrc: string, totalDuration: number = 0): LyricLine[]
 }
 
 /**
- * Intelligent syllable & word interpolation for fluid Apple Music / Verci style kinetic animations
+ * High-accuracy musical syllable & word interpolation for fluid Verci / Apple Music single-word timings
  */
-function interpolateWords(text: string, startTime: number, endTime: number): WordTiming[] {
+function interpolateMusicalWords(text: string, startTime: number, endTime: number): WordTiming[] {
   if (!text) return [];
   const rawWords = text.split(/\s+/).filter(Boolean);
   if (rawWords.length === 0) return [];
 
-  const lineDuration = Math.max(0.5, endTime - startTime);
-  // Weight words slightly by character length (longer words take longer to sing)
-  const totalWeight = rawWords.reduce((sum, w) => sum + Math.max(2, w.length), 0);
+  const lineDuration = Math.max(0.4, endTime - startTime);
+
+  // Calculate weights based on syllables, vowels, and punctuation
+  const weights = rawWords.map((word, idx) => {
+    let weight = Math.max(2, word.length);
+    // Vowels take longer to sing than consonants
+    const vowelCount = (word.match(/[aeiouy]/gi) || []).length;
+    weight += vowelCount * 1.5;
+
+    // Last word often sustains longer (held note)
+    if (idx === rawWords.length - 1) {
+      weight *= 1.35;
+    }
+
+    // Punctuation pause
+    if (/[,.?!:;]$/.test(word)) {
+      weight *= 1.2;
+    }
+
+    return weight;
+  });
+
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
 
   let currentStart = startTime;
   const wordTimings: WordTiming[] = [];
 
   for (let i = 0; i < rawWords.length; i++) {
     const word = rawWords[i];
-    const weight = Math.max(2, word.length);
-    const duration = (weight / totalWeight) * lineDuration;
+    const duration = (weights[i] / totalWeight) * lineDuration;
     const end = Math.min(endTime, currentStart + duration);
 
     wordTimings.push({
@@ -138,7 +150,7 @@ function interpolateWords(text: string, startTime: number, endTime: number): Wor
 }
 
 /**
- * Converts plain text lyrics into estimated timed lines when no LRC is available
+ * Converts plain text lyrics into estimated timed lines
  */
 export function convertPlainToEstimatedLines(plainText: string, trackDuration: number = 180): LyricLine[] {
   if (!plainText) return [];
@@ -149,10 +161,9 @@ export function convertPlainToEstimatedLines(plainText: string, trackDuration: n
 
   if (rawLines.length === 0) return [];
 
-  // Spread lines evenly across 15% to 90% of track duration
-  const startOffset = Math.min(12, trackDuration * 0.1);
-  const endOffset = trackDuration * 0.92;
-  const usableDuration = Math.max(30, endOffset - startOffset);
+  const startOffset = Math.min(10, trackDuration * 0.08);
+  const endOffset = trackDuration * 0.94;
+  const usableDuration = Math.max(25, endOffset - startOffset);
   const lineInterval = usableDuration / rawLines.length;
 
   return rawLines.map((text, idx) => {
@@ -163,7 +174,7 @@ export function convertPlainToEstimatedLines(plainText: string, trackDuration: n
       time,
       endTime,
       text,
-      words: interpolateWords(text, time, endTime)
+      words: interpolateMusicalWords(text, time, endTime)
     };
   });
 }
