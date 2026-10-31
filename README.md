@@ -10,9 +10,22 @@
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-4.0-38bdf8?logo=tailwindcss)](https://tailwindcss.com/)
 [![Lyrics Engine](https://img.shields.io/badge/Lyrics_Engine-LRCLIB-f43f5e)](https://lrclib.net/)
 
-**An open-source recreation and fusion of [trylumen.xyz](https://trylumen.xyz) / [trylumn.xyz](https://trylumn.xyz) (ambient screen-edge rim lighting) and [verci.xyz](https://verci.xyz) (real-time kinetic word-by-word synced lyrics) with native Spotify & Apple Music support.**
+**An open-source recreation and fusion of [trylumen.xyz](https://trylumen.xyz) / [trylumn.xyz](https://trylumn.xyz) (ambient screen-edge rim lighting visualizer) and [verci.xyz](https://verci.xyz) (kinetic word-by-word synchronized lyrics for Mac) with native Spotify & Apple Music support.**
 
-[Features](#-features) • [Deep Backend Architecture](#-deep-backend-architecture-explained) • [Lockscreen & UI Modes](#-lockscreen-mode--ui-design) • [Packaging for macOS](#-packaging-for-macos) • [Publishing to GitHub](#-publishing-to-github) • [License](#-license)
+[Overview](#-overview) • [Preview & Demo](#-preview--demo) • [Features](#-features) • [Deep Architecture](#-deep-backend-architecture-explained) • [UI & Liquid Glass](#-ui--liquid-glass-design) • [Quick Start](#-quick-start) • [Packaging for macOS](#-packaging-for-macos) • [Publishing to GitHub](#-publishing-to-github) • [License](#-license)
+
+</div>
+
+---
+
+## 📸 Preview & Demo
+
+<div align="center">
+
+<!-- Drop your screenrecording GIF or video here (e.g. assets/preview.gif) -->
+<img src="./assets/preview.png" alt="Lyric Lockscreen & Ambient Visualizer Preview" width="850" onerror="this.style.display='none'" />
+
+*Real-time kinetic lyrics popping to the rhythm, ambient perimeter rim lighting syncing with the audio, and dark smoked liquid glass over blurred album artwork.*
 
 </div>
 
@@ -20,27 +33,28 @@
 
 ## 🌟 Overview
 
-**Lyric** transforms your Mac into an ambient visualizer and dynamic lyric display:
-- **Cinematic Blurred Cover Art Background**: Fullscreen dynamic background derived from the current album artwork with deep radial vignettes and subtle noise grain (`blur-[75px] saturate-[185%] brightness-[0.42]`).
-- **Real Liquid Glass UI Elements**: Powered by [`@ybouane/liquidglass`](https://github.com/ybouane/liquidglass), applying real-time WebGL refraction shaders, chromatic aberration, and Fresnel lighting directly to floating HTML UI components.
-- **Dynamic Slights (Ambient Edge Rim Lighting)**: Screen perimeter glow pulsing live to audio FFT bass frequencies (20–150Hz), dynamically tinted to the current album art palette.
+**Lyric** turns your Mac screen into an ambient visualizer and dynamic lyric display:
+- **Heavily Blurred Cover Art Background**: Fullscreen dynamic background derived directly from the currently playing album artwork with gentle vignette and zero color-banding (`blur-[90px] saturate-[145%] brightness-[0.5]`).
+- **Real Liquid Glass UI Elements**: Powered by [`@ybouane/liquidglass`](https://github.com/ybouane/liquidglass), rendering real-time WebGL refraction shaders, chromatic aberration, and Fresnel lighting directly onto floating HTML UI components.
+- **Dynamic Slights (Ambient Perimeter Visualizer)**: Reactive screen border lighting that dynamically pulses and flares to audio sub-bass kicks, procedural rhythm envelopes, or live microphone acoustic sound.
 - **Zero-Token macOS Desktop Bridge**: Communicates directly with native **Apple Music** and **Spotify** desktop apps via AppleScript/JXA with **zero logins, zero developer keys, and zero client secrets**.
 - **Two Curated Kinetic Lyric Styles**:
   1. **✦ Single Word (Verci Signature)**: Displays one massive kinetic word at a time with spring physics and upcoming ghost words preview.
   2. **Smooth Captions (Viral Pop)**: Sentence view where active words bounce out with spring scale (`scale(1.15)`) and radiant glow.
 - **Monotonic 120Hz/60Hz Playback Clock**: Eliminates repeating lyrics, stutter, and lag through latency compensation and monotonic rate steering.
-- **Pure White Minimal Floating Player Bar**: Sleek floating liquid glass capsule player with purely white monochrome icons (no button pods, no colored icons, no shuffle/repeat distraction), integrated album art, and live progress scrubber.
-- **Packaged for macOS**: Ready as a standalone native `.dmg` installer and `.app` bundle via Electron.
+- **Dark Smoked Floating Capsule Player**: Sleek floating liquid glass capsule player with purely white monochrome icons, live sync calibration buttons (`−` / `+`), and zero clutter (no progress bar, no shuffle/repeat).
+- **100% Self-Contained Mac Application**: Packaged with an embedded native companion server. No terminal commands or background servers needed to launch.
 
 ---
 
 ## ✨ Features
 
-- 🌈 **Dynamic Slights (Ambient Rim Lighting)**: Screen perimeter glow reacting live to audio FFT bass frequencies (20–150Hz), automatically tinted to the current album artwork palette.
+- 🌈 **Dynamic Slights (Ambient Rim Lighting)**: Screen perimeter glow reacting live to audio FFT sub-bass (20–150Hz), automatically tinted to the current album artwork palette.
 - 🎤 **Real-Time Word Sync**: Powered by the free, open-source [LRCLIB](https://lrclib.net) API with musical word and syllable timing interpolation.
 - 🎵 **Native Spotify & Apple Music**: Zero-configuration local companion bridge that auto-detects currently playing songs and high-res cover art.
-- 🎛️ **Floating Capsule Player Bar**: Sleek floating glass pill with shuffle (red indicator), previous, play/pause, next, repeat, album thumbnail, track info, integrated scrubber line, lyrics toggle, search, source badge, and volume.
-- 🎚️ **$\pm 50\text{ms}$ Sync Calibration**: Fine-tune sync delay instantly using keyboard hotkeys <kbd>[</kbd> and <kbd>]</kbd>.
+- 🎛️ **Floating Capsule Player Bar**: Dark smoked liquid glass pill with previous, play/pause, next, album thumbnail, track title, artist name, live sync offset widget (`Sync 0ms`), lyrics toggle, mic audio sync, and volume.
+- 🎚️ **Instant Sync Calibration**: Built-in `−` and `+` buttons right on the bar (and keyboard hotkeys <kbd>[</kbd> and <kbd>]</kbd>) to delay or speed up lyrics in $50\text{ms}$ increments.
+- 🎙️ **Live Acoustic & Procedural Beat Sync**: Ambient rim lights pulse to the rhythm via synchronized audio envelope modeling, plus a 1-click `Mic` toggle for real room-audio FFT analysis.
 - 🖥️ **macOS Desktop App & Web App**: Run in your browser or as a native standalone Mac application with full-bleed frameless window support.
 
 ---
@@ -54,24 +68,24 @@ flowchart TD
         SpotifyMac["Spotify Desktop (Spotify.app)"]
     end
 
-    subgraph Backend["Local Companion Service (:4892)"]
+    subgraph Backend["Embedded Companion Service (:4892)"]
         AppleScript["AppleScript JXA Engine"]
         TimeStamper["Latency Compensation Clock (+180ms)"]
         ArtworkSearch["iTunes High-Res Artwork API (600x600)"]
-        REST["Express REST Bridge (/api/now-playing)"]
+        REST["Native Node.js HTTP Bridge (/api/now-playing)"]
     end
 
-    subgraph Frontend["Lumen Engine (:5173 / Electron)"]
+    subgraph Frontend["Lyric Engine (:5173 / Electron)"]
         MonotonicClock["Monotonic Smooth Playback Clock (120Hz/60Hz)"]
         LRCLIBEngine["LRCLIB Synchronized Lyrics Client"]
         SyllableParser["Musical Syllable & Word Interpolator"]
-        WebAudioFFT["Web Audio API FFT Analyser (20-150Hz Bass)"]
+        AudioEngine["Web Audio FFT & Procedural Beat Engine"]
         
         subgraph Visuals["Visual Presentation"]
-            RimLights["Dynamic Slights (Screen Edge Glow)"]
+            RimLights["Dynamic Slights (Perimeter Rim Glow)"]
             LyricsView["Single Word / Smooth Captions"]
-            LockscreenBar["Floating Bottom Capsule Player"]
-            SplitCard["Liquid Glass Player Card"]
+            LockscreenBar["Floating Bottom Liquid Glass Capsule"]
+            BlurredCover["Blurred Cover Art Background"]
         end
     end
 
@@ -86,15 +100,16 @@ flowchart TD
     MonotonicClock --> LockscreenBar
     LRCLIBEngine --> SyllableParser
     SyllableParser --> LyricsView
-    WebAudioFFT --> RimLights
+    AudioEngine --> RimLights
+    REST --> BlurredCover
 ```
 
-### 1. Zero-Token macOS Desktop IPC (`server/index.js`)
+### 1. Zero-Token macOS Desktop IPC (`electron/main.cjs` & `server/index.js`)
 
-Unlike web players that require registering a Spotify Developer account and authenticating via OAuth PKCE, Lumen uses macOS's native Inter-Process Communication (AppleScript):
+Unlike web players that require registering a Spotify Developer account and authenticating via OAuth PKCE, Lyric uses macOS's native Inter-Process Communication (AppleScript):
 
 ```javascript
-// Excerpt from server/index.js
+// Excerpt from AppleScript JXA query
 const script = `
   tell application "Music"
     set pState to player state as string
@@ -109,19 +124,19 @@ const script = `
 `;
 ```
 
-- **Delimited Wire Protocol (`<|>`)**: Standard AppleScript JSON serialization frequently breaks when song titles contain double quotes (`"`) or backslashes. Lumen uses custom `<|>` delimiters, making IPC string parsing 100% immune to syntax errors.
-- **Fast 350ms Polling**: The companion server executes queries with a strict 2-second timeout and runs safely without blocking the event loop.
-- **Automatic Artwork Fetcher**: When Apple Music does not expose artwork URLs via AppleScript, the backend queries Apple's iTunes CDN for the official 600x600 high-resolution cover art.
+- **Delimited Wire Protocol (`<|>`)**: Standard AppleScript JSON serialization frequently breaks when song titles contain double quotes (`"`) or backslashes. Lyric uses custom `<|>` delimiters, making IPC string parsing 100% immune to syntax errors.
+- **Embedded & Zero-Dependency**: The companion server runs directly inside Electron using Node's standard `http` library with CORS support—no separate terminal processes or external Express installations required.
+- **Automatic High-Res Artwork Fetcher**: When Apple Music does not expose artwork URLs via AppleScript, the engine queries Apple's iTunes Search CDN for the official 600x600 high-resolution artwork.
 
 ### 2. The Monotonic 120Hz Playback Clock (`src/services/playbackClock.ts`)
 
-#### Why Web Music Players Lag & Repeat Lyrics:
+#### Why Music Players Lag & Repeat Lyrics:
 1. `osascript` takes $\sim 180\text{ms}$ to execute. When Apple Music reports `position: 12.0s`, the audio coming out of the speakers is already at $12.18\text{s}$.
 2. If you poll periodically, between polls the playhead stops.
 3. If an incoming sample arrives slightly late or rounded (e.g. $11.95\text{s}$ instead of $12.10\text{s}$), a naive player rewinds by $150\text{ms}$. When the clock rewinds, words that were already finished re-trigger, causing the **repeating lyric stutter**!
 
 #### The Monotonicity Guarantee:
-Lumen enforces **strict forward monotonicity**:
+Lyric enforces **strict forward monotonicity**:
 
 $$\text{currentTime}(t) \ge \text{lastReturnedTime}$$
 
@@ -143,102 +158,120 @@ Every single frame, `requestAnimationFrame` calculates position with sub-millise
 
 ### 3. Musical Word & Syllable Interpolation (`src/services/lrcParser.ts`)
 
-LRCLIB provides millisecond-accurate timestamps at line level. To drive the kinetic single-word animation when word-level tags are not in the raw LRC file, Lumen calculates musical syllable weights:
+LRCLIB provides millisecond-accurate timestamps at line level. To drive the kinetic single-word animation when word-level tags are not in the raw LRC file, Lyric calculates musical syllable weights:
 - **Vowel weighting**: Vowels (`a, e, i, o, u, y`) are allocated 1.5x more singing duration than hard consonants.
 - **Held note sustain**: The final word in each lyric line is weighted with 1.35x extra duration to match vocal sustain.
 - **Punctuation pauses**: Commas, question marks, and dashes introduce natural 1.2x pauses.
 
 ---
 
-## 🎨 Lockscreen Mode & UI Design
+## 🎨 UI & Liquid Glass Design
 
-### 1. Lockscreen Mode (Default)
-- **Background**: Dynamic blurred version of the current album artwork with deep radial vignettes and subtle noise grain (`blur-[75px] saturate-[185%] brightness-[0.42]`).
-- **Dynamic Slights**: Reactive glowing border around the display perimeter pulsing to the bass frequencies.
-- **Center Stage**: ONLY the massive kinetic lyrics (**Single Word** or **Smooth Captions**).
-- **Bottom Floating Liquid Glass Capsule Player**:
-  - Attached with `@ybouane/liquidglass` WebGL refraction and chromatic aberration.
-  - **Purely White Icons**: Clean, distraction-free monochrome icons with zero background pods.
-  - **Left Controls**: `Previous`, `Play/Pause`, `Next` (shuffle and repeat removed for minimalism).
-  - **Center Info**: Rounded album thumbnail, track title, artist name, and integrated live progress scrubber bar.
-  - **Right Controls**: `...` Settings, `💬` Lyrics style toggle, `≡` Search, `Radio` audio source indicator, and `Volume` toggle.
+### 1. Blurred Cover Art Background
+- The actual current album artwork is dynamically scaled (`scale-135`) and heavily blurred (`blur-[90px] sm:blur-[115px]`) with natural brightness (`brightness-[0.5]`) and saturation.
+- You can barely distinguish the shapes, but the authentic colors, gradients, and moods of the artwork shine through naturally without muddy artificial color overlays.
 
-### 2. Split Stage Mode
-- Left side features the liquid-glass player card matching the reference design.
-- Right side features the kinetic lyrics column.
-- Toggle between Lockscreen and Split views anytime via the **Lockscreen View / Split View** button in the header.
-
-### 3. Liquid Glass WebGL Shader Integration (`@ybouane/liquidglass`)
-Lumen integrates [ybouane/liquidglass](https://github.com/ybouane/liquidglass) to apply real-time optical refraction, chromatic aberration, and Fresnel reflection directly onto floating HTML UI elements over the blurred background:
+### 2. Liquid Glass WebGL Shader Integration (`@ybouane/liquidglass`)
+Lyric applies [ybouane/liquidglass](https://github.com/ybouane/liquidglass) WebGL refraction shaders directly onto floating HTML UI elements:
 ```typescript
 import { LiquidGlass } from '@ybouane/liquidglass';
 
 LiquidGlass.init({
   root: document.getElementById('root'),
-  glassElements: [bottomBarRef.current, playerCardRef.current],
+  glassElements: [bottomBarRef.current],
   defaults: {
-    refraction: 0.55,
-    chromAberration: 0.04,
-    edgeHighlight: 0.08,
-    blurAmount: 0.2,
-    cornerRadius: 40,
+    refraction: 0.45,
+    chromAberration: 0.035,
+    edgeHighlight: 0.1,
+    blurAmount: 0.12,
+    cornerRadius: 38,
+    brightness: -0.22, // Dark smoked glass profile
+    opacity: 0.8,       // Transparent so blurred artwork refracts through
     floating: false
   }
 });
+```
+
+### 3. Bottom Floating Capsule Player Bar
+- **Pure White Monochrome Controls**: Previous (`SkipBack`), Play/Pause (`Play`/`Pause`), Next (`SkipForward`), Settings (`MoreHorizontal`), Lyrics Style toggle (`MessageSquare`), Mic toggle (`Mic`), and Volume (`Volume2`/`VolumeX`).
+- **Sync Calibration Widget**: Click `−` to delay lyrics if they appear too early; click `+` to speed up lyrics if they are lagging behind.
+- **Distraction Free**: No progress bar, no shuffle, and no repeat buttons to pull your attention away from the lyrics and visualizer.
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- macOS (Apple Silicon M1/M2/M3/M4 or Intel)
+- Node.js 18+ & npm
+
+### Development Mode (Web Browser)
+```bash
+# Clone the repository
+git clone https://github.com/your-username/lyric.git
+cd lyric
+
+# Install dependencies
+npm install
+
+# Start development server and companion bridge
+npm run start
+```
+Visit **`http://localhost:5173`** in your browser.
+
+### Native macOS Window (Electron)
+```bash
+npm run electron:dev
 ```
 
 ---
 
 ## 📦 Packaging for macOS
 
-Lumen is configured with `electron` and `electron-builder` to package directly into a native macOS application and `.dmg` installer.
+Lyric includes `electron-builder` configuration for Apple Silicon (`arm64`) and Intel:
 
-### 1. Test in Native Mac Window (Development)
-```bash
-npm run electron:dev
-```
-This runs the background companion server, Vite client, and opens Lumen inside a native macOS frameless window with native traffic lights.
-
-### 2. Package Native Mac App (`Lyric.app`)
+### 1. Package Standalone Mac Application (`Lyric.app`)
 ```bash
 npm run package:mac
 ```
-Generates the unpacked `.app` bundle at `release/mac-arm64/Lyric.app`.
+Generates the ready-to-run `.app` bundle at `release/mac-arm64/Lyric.app`.
 
-### 3. Generate macOS DMG Installer (`.dmg`)
+### 2. Generate macOS DMG Installer (`.dmg`)
 ```bash
 npm run build:dmg
 ```
-Generates the ready-to-distribute disk image at `release/Lyric-1.0.0-arm64.dmg`.
+Generates the disk image installer at `release/Lyric-1.0.0-arm64.dmg` (~100 MB).
 
 ---
 
-## 🚀 Publishing to GitHub
+## 🌐 Publishing to GitHub
 
 To publish this project to GitHub as an open-source repository:
 
-### 1. Initialize & Push to GitHub
+### 1. Add Your Remote & Push
 ```bash
-# Replace with your own GitHub repository URL
+# 1. Add your GitHub repository as origin
 git remote add origin https://github.com/your-username/lyric.git
+
+# 2. Push main branch
 git branch -M main
 git push -u origin main
 ```
 
 ### 2. Create a GitHub Release
-1. Go to your repository on GitHub.
-2. Click **Releases** > **Draft a new release**.
-3. Set tag to `v1.0.0` and title to `Lyric v1.0.0 — Ambient Rim Lighting & Kinetic Synced Lyrics`.
-4. Drag and drop `release/Lyric-1.0.0-arm64.dmg` into the release binaries section.
+1. Open your repository on GitHub.
+2. Go to **Releases** > **Draft a new release**.
+3. Set the tag to `v1.0.0` and title to `Lyric v1.0.0 — Ambient Rim Lighting & Kinetic Synced Lyrics`.
+4. Attach `release/Lyric-1.0.0-arm64.dmg` to the release binaries.
 5. Click **Publish release**.
 
 ---
 
 ## 🔒 macOS Automation Permissions
 
-When running Lyric to control or read from Apple Music or Spotify:
+When running Lyric to communicate with Apple Music or Spotify:
 1. Open **macOS System Settings** > **Privacy & Security** > **Automation**.
-2. Ensure your terminal or **Lyric.app** has access checked for **Music** and **Spotify**.
+2. Ensure **Lyric.app** (or your Terminal) has checkboxes enabled for **Music** and **Spotify**.
 
 ---
 
@@ -246,13 +279,12 @@ When running Lyric to control or read from Apple Music or Spotify:
 
 | Key | Action |
 |---|---|
-| `Space` | Play / Pause |
-| `L` | Toggle Lyric Style (Single Word ↔ Smooth Captions) |
-| `[` | Shift Sync Earlier by $-50\text{ms}$ |
-| `]` | Shift Sync Later by $+50\text{ms}$ |
-| `R` | Toggle Dynamic Slights (Edge Rim Lighting) |
-| `F` | Toggle True Fullscreen |
-| `→` / `←` | Seek Forward / Backward $\pm 5\text{s}$ |
+| <kbd>Space</kbd> | Play / Pause |
+| <kbd>L</kbd> | Toggle Lyric Style (Single Word ↔ Smooth Captions) |
+| <kbd>[</kbd> | Delay Lyrics by $-50\text{ms}$ (use if lyrics are too early) |
+| <kbd>]</kbd> | Advance Lyrics by $+50\text{ms}$ (use if lyrics are lagging) |
+| <kbd>R</kbd> | Toggle Dynamic Slights (Perimeter Rim Lighting) |
+| <kbd>F</kbd> | Toggle True Fullscreen |
 
 ---
 
