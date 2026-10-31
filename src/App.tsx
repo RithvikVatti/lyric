@@ -69,6 +69,7 @@ export const App: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isMacBridgeOnline, setIsMacBridgeOnline] = useState<boolean>(false);
+  const [isMicActive, setIsMicActive] = useState<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rootContainerRef = useRef<HTMLDivElement>(null);
@@ -141,7 +142,7 @@ export const App: React.FC = () => {
       setCurrentTime(nowPos);
 
       if (isPlaying) {
-        const energy = visualizerEngine.getAudioEnergy();
+        const energy = visualizerEngine.getAudioEnergy(nowPos, isPlaying);
         setAudioEnergy(energy);
       } else {
         setAudioEnergy({ bass: 0.05, mid: 0.05, treble: 0.05, overall: 0.05 });
@@ -354,12 +355,19 @@ export const App: React.FC = () => {
 
   const adjustSyncOffset = useCallback((deltaMs: number) => {
     setSyncOffset(curr => {
-      const next = curr + deltaMs;
-      const label = next > 0 ? `+${next}ms` : `${next}ms`;
-      setSyncFeedback(`Sync: ${label}`);
+      const next = deltaMs === 0 ? 0 : curr + deltaMs;
+      const label = next === 0 ? 'Sync: 0ms' : next > 0 ? `Sync: +${next}ms` : `Sync: ${next}ms`;
+      setSyncFeedback(label);
       setTimeout(() => setSyncFeedback(null), 1500);
       return next;
     });
+  }, []);
+
+  const handleToggleMic = useCallback(async () => {
+    const active = await visualizerEngine.toggleMicrophone();
+    setIsMicActive(active);
+    setSyncFeedback(active ? 'Mic Visualizer: ON' : 'Procedural Beat Sync: ON');
+    setTimeout(() => setSyncFeedback(null), 1800);
   }, []);
 
   // Keyboard Shortcuts
@@ -477,6 +485,8 @@ export const App: React.FC = () => {
               duration={duration}
               isPlaying={isPlaying}
               lyricStyle={lyricStyle}
+              syncOffset={syncOffset}
+              onAdjustSync={adjustSyncOffset}
               onToggleLyricStyle={toggleLyricStyle}
               onPlayPause={handlePlayPause}
               onNext={handleNext}
@@ -484,6 +494,8 @@ export const App: React.FC = () => {
               onSeek={handleSeek}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenSearch={() => setIsSearchOpen(true)}
+              isMicActive={isMicActive}
+              onToggleMic={handleToggleMic}
             />
           </div>
         ) : (
@@ -526,7 +538,7 @@ export const App: React.FC = () => {
           {lyrics ? `Lyrics: ${lyrics.source || 'LRCLIB'}` : lyricsLoading ? 'Fetching lyrics...' : 'No lyrics'}
         </span>
         <span className="hidden md:inline">
-          Hotkeys: Space (Play/Pause) • L (Toggle Style) • [ ] (Sync $\pm$50ms) • F (Fullscreen)
+          Hotkeys: Space (Play/Pause) • L (Toggle Style) • [ ] (Sync ±50ms) • F (Fullscreen)
         </span>
       </footer>
 
