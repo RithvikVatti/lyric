@@ -1,0 +1,167 @@
+import React, { useMemo } from 'react';
+import { ColorPalette, RimLightConfig } from '../types';
+
+interface AmbientRimLightsProps {
+  config: RimLightConfig;
+  palette: ColorPalette;
+  audioEnergy: { bass: number; mid: number; treble: number; overall: number };
+  isPlaying: boolean;
+}
+
+export const AmbientRimLights: React.FC<AmbientRimLightsProps> = ({
+  config,
+  palette,
+  audioEnergy,
+  isPlaying
+}) => {
+  if (!config.enabled) return null;
+
+  // Dynamic beat multiplier based on audio FFT and reactivity slider
+  const beatScale = useMemo(() => {
+    if (!isPlaying) return 1.0;
+    const factor = config.beatReactivity * 1.5;
+    // Bass energy adds punch
+    return 1.0 + audioEnergy.bass * factor;
+  }, [isPlaying, config.beatReactivity, audioEnergy.bass]);
+
+  const effectiveThickness = Math.max(2, Math.round(config.thickness * (isPlaying ? 0.9 + audioEnergy.overall * 0.3 : 1.0)));
+  const effectiveBlur = Math.round(config.blur * beatScale);
+  const effectiveOpacity = Math.min(1.0, config.intensity * (isPlaying ? 0.75 + audioEnergy.bass * 0.45 : 0.85));
+
+  // Mode-specific styles
+  const getGlowStyles = () => {
+    const cAccent = palette.accent;
+    const cSecondary = palette.secondary;
+    const cDominant = palette.dominant;
+
+    switch (config.mode) {
+      case 'pulse':
+        return {
+          boxShadow: `
+            inset 0 0 ${effectiveBlur}px ${effectiveThickness}px ${cAccent},
+            inset 0 0 ${Math.round(effectiveBlur * 0.5)}px ${Math.round(effectiveThickness * 0.5)}px ${cSecondary},
+            0 0 ${effectiveBlur * 1.5}px ${cAccent}
+          `,
+          opacity: effectiveOpacity,
+          transition: 'all 0.08s cubic-bezier(0.2, 0.8, 0.4, 1)'
+        };
+
+      case 'wave':
+        return {
+          boxShadow: `
+            inset 0 0 ${effectiveBlur}px ${effectiveThickness}px ${cAccent},
+            inset 0 0 ${effectiveBlur * 1.8}px ${cSecondary}
+          `,
+          opacity: effectiveOpacity,
+          transition: 'box-shadow 0.25s ease-out, opacity 0.2s ease-out'
+        };
+
+      case 'liquid':
+        return {
+          boxShadow: `
+            inset 0 0 ${effectiveBlur * 1.2}px ${effectiveThickness * 1.3}px ${cSecondary},
+            inset 0 0 ${effectiveBlur * 0.6}px ${effectiveThickness * 0.6}px ${cAccent},
+            0 0 ${effectiveBlur * 2}px ${cDominant}
+          `,
+          opacity: effectiveOpacity,
+          filter: `blur(${Math.max(1, effectiveBlur * 0.15)}px) brightness(${1 + audioEnergy.treble * 0.3})`,
+          transition: 'all 0.12s ease-out'
+        };
+
+      case 'static':
+        return {
+          boxShadow: `inset 0 0 ${effectiveBlur}px ${effectiveThickness}px ${cAccent}`,
+          opacity: effectiveOpacity,
+          transition: 'opacity 0.3s ease'
+        };
+
+      case 'aurora':
+      default:
+        return {
+          boxShadow: `
+            inset 0 0 ${effectiveBlur * 1.4}px ${effectiveThickness}px ${cAccent},
+            inset 0 0 ${effectiveBlur * 0.7}px ${Math.round(effectiveThickness * 0.5)}px ${cSecondary},
+            inset 0 0 ${effectiveBlur * 2}px ${Math.round(effectiveThickness * 1.5)}px ${cDominant}
+          `,
+          opacity: effectiveOpacity,
+          transition: 'box-shadow 0.1s ease-out, opacity 0.15s ease-out'
+        };
+    }
+  };
+
+  const glowStyle = getGlowStyles();
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-40 overflow-hidden select-none"
+      style={{
+        transform: `scale(${isPlaying ? 1.0 + audioEnergy.bass * 0.003 : 1.0})`,
+        transition: 'transform 0.08s ease-out'
+      }}
+      aria-hidden="true"
+    >
+      {/* Perimeter Rim Light Layer */}
+      <div
+        className={`absolute inset-0 ${config.mode === 'aurora' ? 'animate-aurora' : ''}`}
+        style={glowStyle}
+      />
+
+      {/* Top Edge Ambient Light Bar */}
+      <div
+        className="absolute top-0 left-0 right-0 h-1 transition-all duration-100"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${palette.secondary} 30%, ${palette.accent} 50%, ${palette.dominant} 70%, transparent 100%)`,
+          height: `${effectiveThickness}px`,
+          opacity: effectiveOpacity * 0.9,
+          filter: `blur(${Math.max(2, effectiveThickness * 0.8)}px)`
+        }}
+      />
+
+      {/* Bottom Edge Ambient Light Bar */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-1 transition-all duration-100"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${palette.dominant} 30%, ${palette.accent} 50%, ${palette.secondary} 70%, transparent 100%)`,
+          height: `${effectiveThickness}px`,
+          opacity: effectiveOpacity * 0.9,
+          filter: `blur(${Math.max(2, effectiveThickness * 0.8)}px)`
+        }}
+      />
+
+      {/* Left Edge Ambient Light Bar */}
+      <div
+        className="absolute top-0 bottom-0 left-0 w-1 transition-all duration-100"
+        style={{
+          background: `linear-gradient(180deg, transparent 0%, ${palette.accent} 40%, ${palette.secondary} 80%, transparent 100%)`,
+          width: `${effectiveThickness}px`,
+          opacity: effectiveOpacity * 0.9,
+          filter: `blur(${Math.max(2, effectiveThickness * 0.8)}px)`
+        }}
+      />
+
+      {/* Right Edge Ambient Light Bar */}
+      <div
+        className="absolute top-0 bottom-0 right-0 w-1 transition-all duration-100"
+        style={{
+          background: `linear-gradient(180deg, transparent 0%, ${palette.secondary} 40%, ${palette.accent} 80%, transparent 100%)`,
+          width: `${effectiveThickness}px`,
+          opacity: effectiveOpacity * 0.9,
+          filter: `blur(${Math.max(2, effectiveThickness * 0.8)}px)`
+        }}
+      />
+
+      {/* Outer Screen Ambient Feathering / Backlight Glow */}
+      <div
+        className="absolute -inset-10 opacity-60 mix-blend-screen pointer-events-none"
+        style={{
+          background: `radial-gradient(ellipse at 50% 0%, ${palette.accent} 0%, transparent 70%),
+                      radial-gradient(ellipse at 50% 100%, ${palette.secondary} 0%, transparent 70%),
+                      radial-gradient(ellipse at 0% 50%, ${palette.dominant} 0%, transparent 70%),
+                      radial-gradient(ellipse at 100% 50%, ${palette.accent} 0%, transparent 70%)`,
+          opacity: effectiveOpacity * 0.35,
+          filter: `blur(${effectiveBlur * 1.5}px)`
+        }}
+      />
+    </div>
+  );
+};
