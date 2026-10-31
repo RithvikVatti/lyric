@@ -132,12 +132,12 @@ export const LockscreenPlayerBar = React.forwardRef<HTMLDivElement, LockscreenPl
         {/* ======================================= */}
         <div
           className="flex items-center bg-white/[0.08] hover:bg-white/[0.14] rounded-full px-2 py-0.5 border border-white/15 transition select-none"
-          title="Lyric Sync Offset. Hotkeys [ and ] or click - / +"
+          title="Sync Offset: Click − if lyrics are too early, + if lyrics are too late. Hotkeys: [ and ]"
         >
           <button
             onClick={() => onAdjustSync(-50)}
             className="text-white/60 hover:text-white px-1 font-mono text-xs font-bold active:scale-90 transition focus:outline-none"
-            title="Lyrics earlier (-50ms)"
+            title="Delay lyrics (use if lyrics are too early) • Hotkey ["
           >
             −
           </button>
@@ -147,7 +147,7 @@ export const LockscreenPlayerBar = React.forwardRef<HTMLDivElement, LockscreenPl
           <button
             onClick={() => onAdjustSync(50)}
             className="text-white/60 hover:text-white px-1 font-mono text-xs font-bold active:scale-90 transition focus:outline-none"
-            title="Lyrics later (+50ms)"
+            title="Speed up lyrics (use if lyrics are too late / lagging) • Hotkey ]"
           >
             +
           </button>

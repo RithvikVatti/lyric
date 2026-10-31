@@ -1,5 +1,5 @@
 {
-  "name": "lumen",
+  "name": "lyric",
   "version": "1.0.0",
   "description": "Open-source ambient rim lighting and kinetic synchronized lyrics for Spotify and Apple Music.",
   "main": "electron/main.cjs",
@@ -15,8 +15,8 @@
     "build:dmg": "npm run build && electron-builder --mac dmg"
   },
   "build": {
-    "appId": "xyz.trylumen.app",
-    "productName": "Lumen",
+    "appId": "xyz.lyric.app",
+    "productName": "Lyric",
     "directories": {
       "output": "release"
     },

@@ -1,4 +1,4 @@
-# Lumen ✦ Open-Source Ambient Rim Lighting & Kinetic Synced Lyrics
+# Lyric ✦ Open-Source Ambient Rim Lighting & Kinetic Synced Lyrics
 
 <div align="center">
 
@@ -20,7 +20,7 @@
 
 ## 🌟 Overview
 
-**Lumen** transforms your Mac into an ambient visualizer and dynamic lyric display:
+**Lyric** transforms your Mac into an ambient visualizer and dynamic lyric display:
 - **Cinematic Blurred Cover Art Background**: Fullscreen dynamic background derived from the current album artwork with deep radial vignettes and subtle noise grain (`blur-[75px] saturate-[185%] brightness-[0.42]`).
 - **Real Liquid Glass UI Elements**: Powered by [`@ybouane/liquidglass`](https://github.com/ybouane/liquidglass), applying real-time WebGL refraction shaders, chromatic aberration, and Fresnel lighting directly to floating HTML UI components.
 - **Dynamic Slights (Ambient Edge Rim Lighting)**: Screen perimeter glow pulsing live to audio FFT bass frequencies (20–150Hz), dynamically tinted to the current album art palette.
@@ -199,17 +199,17 @@ npm run electron:dev
 ```
 This runs the background companion server, Vite client, and opens Lumen inside a native macOS frameless window with native traffic lights.
 
-### 2. Package Native Mac App (`Lumen.app`)
+### 2. Package Native Mac App (`Lyric.app`)
 ```bash
 npm run package:mac
 ```
-Generates the unpacked `.app` bundle at `release/mac-arm64/Lumen.app`.
+Generates the unpacked `.app` bundle at `release/mac-arm64/Lyric.app`.
 
 ### 3. Generate macOS DMG Installer (`.dmg`)
 ```bash
 npm run build:dmg
 ```
-Generates the ready-to-distribute disk image at `release/Lumen-1.0.0-arm64.dmg`.
+Generates the ready-to-distribute disk image at `release/Lyric-1.0.0-arm64.dmg`.
 
 ---
 
@@ -220,7 +220,7 @@ To publish this project to GitHub as an open-source repository:
 ### 1. Initialize & Push to GitHub
 ```bash
 # Replace with your own GitHub repository URL
-git remote add origin https://github.com/your-username/lumen.git
+git remote add origin https://github.com/your-username/lyric.git
 git branch -M main
 git push -u origin main
 ```
@@ -228,17 +228,17 @@ git push -u origin main
 ### 2. Create a GitHub Release
 1. Go to your repository on GitHub.
 2. Click **Releases** > **Draft a new release**.
-3. Set tag to `v1.0.0` and title to `Lumen v1.0.0 — Ambient Rim Lighting & Kinetic Synced Lyrics`.
-4. Drag and drop `release/Lumen-1.0.0-arm64.dmg` into the release binaries section.
+3. Set tag to `v1.0.0` and title to `Lyric v1.0.0 — Ambient Rim Lighting & Kinetic Synced Lyrics`.
+4. Drag and drop `release/Lyric-1.0.0-arm64.dmg` into the release binaries section.
 5. Click **Publish release**.
 
 ---
 
 ## 🔒 macOS Automation Permissions
 
-When running Lumen to control or read from Apple Music or Spotify:
+When running Lyric to control or read from Apple Music or Spotify:
 1. Open **macOS System Settings** > **Privacy & Security** > **Automation**.
-2. Ensure your terminal or **Lumen.app** has access checked for **Music** and **Spotify**.
+2. Ensure your terminal or **Lyric.app** has access checked for **Music** and **Spotify**.
 
 ---
 
