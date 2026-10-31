@@ -20,7 +20,7 @@ interface LiquidGlassPlayerProps {
   onSeek: (seconds: number) => void;
 }
 
-export const LiquidGlassPlayer: React.FC<LiquidGlassPlayerProps> = ({
+export const LiquidGlassPlayer = React.forwardRef<HTMLDivElement, LiquidGlassPlayerProps>(({
   track,
   currentTime,
   duration,
@@ -29,7 +29,7 @@ export const LiquidGlassPlayer: React.FC<LiquidGlassPlayerProps> = ({
   onNext,
   onPrev,
   onSeek
-}) => {
+}, ref) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isHoveringBar, setIsHoveringBar] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -51,9 +51,11 @@ export const LiquidGlassPlayer: React.FC<LiquidGlassPlayerProps> = ({
 
   return (
     <div className="relative select-none transition-all duration-300">
-      {/* Outer Card Bezel */}
+      {/* Outer Card Bezel with Liquid Glass Effect */}
       <div
-        className="w-[360px] sm:w-[390px] md:w-[420px] aspect-square rounded-[36px] sm:rounded-[42px] p-2.5 sm:p-3 bg-[#18181c]/70 backdrop-blur-3xl border border-white/10 relative overflow-hidden shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85),0_0_50px_rgba(0,0,0,0.45)]"
+        ref={ref}
+        data-liquidglass="true"
+        className="w-[360px] sm:w-[390px] md:w-[420px] aspect-square rounded-[36px] sm:rounded-[42px] p-2.5 sm:p-3 bg-[#18181c]/60 backdrop-blur-3xl border border-white/15 relative overflow-hidden shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85),0_0_50px_rgba(0,0,0,0.45)]"
       >
         {/* Inner Artwork Container */}
         <div className="relative w-full h-full rounded-[28px] sm:rounded-[34px] overflow-hidden bg-zinc-900 group">
@@ -192,7 +194,9 @@ export const LiquidGlassPlayer: React.FC<LiquidGlassPlayerProps> = ({
       </div>
     </div>
   );
-};
+});
+
+LiquidGlassPlayer.displayName = 'LiquidGlassPlayer';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);

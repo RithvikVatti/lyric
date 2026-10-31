@@ -163,23 +163,13 @@ export const ControlsModal: React.FC<ControlsModalProps> = ({
                   {[
                     {
                       id: 'verci-single-word',
-                      title: 'Verci Single-Word Stage',
+                      title: 'Single-Word Stage',
                       desc: 'Signature 1-word-at-a-time kinetic pop with spring physics, motion blur & ghost preview'
                     },
                     {
                       id: 'smooth-captions',
-                      title: 'Smooth Captions (Viral Pop)',
+                      title: 'Smooth Captions',
                       desc: 'Sentence view where active words bounce and glow dynamically to the rhythm'
-                    },
-                    {
-                      id: 'cinematic',
-                      title: 'Cinematic Flow',
-                      desc: 'Apple Music multi-line fluid typography with smooth auto-scroll'
-                    },
-                    {
-                      id: 'perspective-3d',
-                      title: 'Verci 3D Wall',
-                      desc: '3D stacked cards tilting in dynamic perspective space'
                     }
                   ].map((s) => (
                     <button

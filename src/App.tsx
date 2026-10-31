@@ -4,7 +4,8 @@ import {
   LyricsData,
   ColorPalette,
   RimLightConfig,
-  LyricStyle
+  LyricStyle,
+  LayoutMode
 } from './types';
 import { DEMO_TRACKS, visualizerEngine, createTrackFromFile } from './services/audioManager';
 import { fetchLyricsFromLRCLIB } from './services/lrclib';
@@ -17,12 +18,14 @@ import {
 } from './services/macosBridge';
 import { globalClock } from './services/playbackClock';
 
-import { BlurredCoverBackground } from './components/BlurredCoverBackground';
 import { AmbientRimLights } from './components/AmbientRimLights';
+import { BlurredCoverBackground } from './components/BlurredCoverBackground';
 import { LiquidGlassPlayer } from './components/LiquidGlassPlayer';
 import { SyncedLyricsView } from './components/SyncedLyricsView';
+import { LockscreenPlayerBar } from './components/LockscreenPlayerBar';
 import { ControlsModal } from './components/ControlsModal';
 import { TrackSearchModal } from './components/TrackSearchModal';
+import { useLiquidGlass } from './hooks/useLiquidGlass';
 
 import {
   Sun,
@@ -30,12 +33,12 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
-  Clock
+  Clock,
+  Layout
 } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Playback & Track State
-  const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [currentTrack, setCurrentTrack] = useState<Track>(DEMO_TRACKS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -44,38 +47,49 @@ export const App: React.FC = () => {
   const [lyricsLoading, setLyricsLoading] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  // Audio Visualizer Energy for Ambient Rim Lights
+  // Audio Visualizer Energy for Dynamic Rim Lights
   const [audioEnergy, setAudioEnergy] = useState({ bass: 0.1, mid: 0.1, treble: 0.1, overall: 0.1 });
 
   // Palette State
   const [extractedPalette, setExtractedPalette] = useState<ColorPalette>(PRESET_PALETTES['album-art']);
 
-  // Configuration States
+  // Configuration States: Default to Lockscreen Mode with Black Background & Dynamic Slights
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('lockscreen');
+  const [lyricStyle, setLyricStyle] = useState<LyricStyle>('verci-single-word');
+
   const [rimConfig, setRimConfig] = useState<RimLightConfig>({
-    enabled: true,
-    mode: 'aurora',
-    thickness: 16,
-    blur: 40,
-    intensity: 0.9,
-    beatReactivity: 0.5,
+    enabled: true, // Dynamic Slights ON
+    mode: 'pulse',
+    thickness: 18,
+    blur: 45,
+    intensity: 1.1,
+    beatReactivity: 0.65,
     palettePreset: 'album-art'
   });
 
   const [syncOffset, setSyncOffset] = useState<number>(0);
-  const [lyricStyle, setLyricStyle] = useState<LyricStyle>('verci-single-word');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isMacBridgeOnline, setIsMacBridgeOnline] = useState<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const rootContainerRef = useRef<HTMLDivElement>(null);
+  const lockscreenBarRef = useRef<HTMLDivElement>(null);
+  const playerCardRef = useRef<HTMLDivElement>(null);
+
+  // Attach ybouane/liquidglass WebGL shader to glass HTML elements
+  useLiquidGlass(rootContainerRef, [lockscreenBarRef, playerCardRef], {
+    refraction: 0.55,
+    cornerRadius: 40,
+    floating: false
+  });
 
   // Sync manual offset with globalClock
   useEffect(() => {
     globalClock.setManualOffset(syncOffset);
   }, [syncOffset]);
 
-  // Derived effective palette based on preset
   const activePalette = rimConfig.palettePreset === 'album-art'
     ? extractedPalette
     : PRESET_PALETTES[rimConfig.palettePreset] || extractedPalette;
@@ -274,11 +288,11 @@ export const App: React.FC = () => {
       sendMacOSCommand('next', targetApp);
       return;
     }
-    const nextIdx = (currentTrackIndex + 1) % DEMO_TRACKS.length;
-    setCurrentTrackIndex(nextIdx);
+    const currentIdx = DEMO_TRACKS.findIndex(t => t.title === currentTrack.title);
+    const nextIdx = (currentIdx + 1) % DEMO_TRACKS.length;
     setCurrentTrack(DEMO_TRACKS[nextIdx]);
     globalClock.reset(0, true);
-  }, [currentTrackIndex, currentTrack]);
+  }, [currentTrack]);
 
   const handlePrev = useCallback(() => {
     if (currentTrack.source.startsWith('macos-')) {
@@ -286,11 +300,11 @@ export const App: React.FC = () => {
       sendMacOSCommand('previous', targetApp);
       return;
     }
-    const prevIdx = (currentTrackIndex - 1 + DEMO_TRACKS.length) % DEMO_TRACKS.length;
-    setCurrentTrackIndex(prevIdx);
+    const currentIdx = DEMO_TRACKS.findIndex(t => t.title === currentTrack.title);
+    const prevIdx = (currentIdx - 1 + DEMO_TRACKS.length) % DEMO_TRACKS.length;
     setCurrentTrack(DEMO_TRACKS[prevIdx]);
     globalClock.reset(0, true);
-  }, [currentTrackIndex, currentTrack]);
+  }, [currentTrack]);
 
   const handleSeek = useCallback((seconds: number) => {
     if (currentTrack.source.startsWith('macos-')) {
@@ -303,15 +317,6 @@ export const App: React.FC = () => {
     globalClock.reset(seconds, isPlaying);
     setCurrentTime(seconds);
   }, [currentTrack, isPlaying]);
-
-  const handleSelectTrack = useCallback((index: number) => {
-    if (index >= 0 && index < DEMO_TRACKS.length) {
-      setCurrentTrackIndex(index);
-      setCurrentTrack(DEMO_TRACKS[index]);
-      globalClock.reset(0, true);
-      setIsPlaying(true);
-    }
-  }, []);
 
   const handleSelectSearchedTrack = useCallback((track: Track) => {
     setCurrentTrack(track);
@@ -333,6 +338,16 @@ export const App: React.FC = () => {
     } else {
       document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
     }
+  }, []);
+
+  const toggleLyricStyle = useCallback(() => {
+    setLyricStyle(curr => {
+      const next = curr === 'verci-single-word' ? 'smooth-captions' : 'verci-single-word';
+      const label = next === 'verci-single-word' ? 'Single Word' : 'Smooth Captions';
+      setSyncFeedback(label);
+      setTimeout(() => setSyncFeedback(null), 1500);
+      return next;
+    });
   }, []);
 
   const adjustSyncOffset = useCallback((deltaMs: number) => {
@@ -362,22 +377,10 @@ export const App: React.FC = () => {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         handleSeek(Math.max(0, currentTime - 5));
+      } else if (e.key === 'l' || e.key === 'L') {
+        toggleLyricStyle();
       } else if (e.key === 'r' || e.key === 'R') {
         setRimConfig(c => ({ ...c, enabled: !c.enabled }));
-      } else if (e.key === 'l' || e.key === 'L') {
-        setLyricStyle(curr => {
-          const styles: LyricStyle[] = ['verci-single-word', 'smooth-captions', 'cinematic', 'perspective-3d'];
-          const next = styles[(styles.indexOf(curr) + 1) % styles.length];
-          const labels: Record<LyricStyle, string> = {
-            'verci-single-word': 'Single Word (Verci)',
-            'smooth-captions': 'Smooth Captions',
-            'cinematic': 'Cinematic Flow',
-            'perspective-3d': '3D Wall'
-          };
-          setSyncFeedback(`Style: ${labels[next]}`);
-          setTimeout(() => setSyncFeedback(null), 1500);
-          return next;
-        });
       } else if (e.key === '[') {
         adjustSyncOffset(-50);
       } else if (e.key === ']') {
@@ -387,14 +390,17 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayPause, toggleFullscreen, handleSeek, currentTime, duration, adjustSyncOffset]);
+  }, [handlePlayPause, toggleFullscreen, handleSeek, currentTime, duration, adjustSyncOffset, toggleLyricStyle]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* 1. Natural Blurred Version of the Cover Art as Screen Background */}
+    <div
+      ref={rootContainerRef}
+      className="relative w-screen h-screen overflow-hidden bg-black/40 text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans',sans-serif]"
+    >
+      {/* 0. Ambient Blurred Cover Art Background (Always active, responsive to current track) */}
       <BlurredCoverBackground coverUrl={currentTrack.albumArt} />
 
-      {/* 2. Ambient Screen-Edge Rim Lighting (trylumn.xyz) */}
+      {/* 1. Dynamic Slights: Screen-Edge Ambient Rim Lights */}
       <AmbientRimLights
         config={rimConfig}
         palette={activePalette}
@@ -402,7 +408,7 @@ export const App: React.FC = () => {
         isPlaying={isPlaying}
       />
 
-      {/* Floating Sync Calibration Feedback Pill */}
+      {/* Floating Sync / Style Feedback Pill */}
       {syncFeedback && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-150">
           <div className="glass-pill px-4 py-2 rounded-full text-xs font-mono font-bold text-cyan-300 shadow-2xl flex items-center gap-2 border border-cyan-400/40">
@@ -412,7 +418,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* 3. Top Floating Header Bar */}
+      {/* 2. Top Floating Header Bar */}
       <header className="relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto">
           <div
@@ -432,21 +438,33 @@ export const App: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] text-white/50 tracking-wide font-medium">
-              Ambient Rim & Synced Lyrics
+              Dynamic Slights & Kinetic Lyrics
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pointer-events-auto">
+        {/* View Layout Toggle: Lockscreen vs Split */}
+        <div className="pointer-events-auto flex items-center gap-2">
+          <button
+            onClick={() => setLayoutMode(curr => curr === 'lockscreen' ? 'split' : 'lockscreen')}
+            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 text-white/90 hover:text-white transition shadow-sm"
+            title="Toggle Lockscreen Mode"
+          >
+            <Layout className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">
+              {layoutMode === 'lockscreen' ? 'Lockscreen View' : 'Split View'}
+            </span>
+          </button>
+
           <button
             onClick={() => setRimConfig(c => ({ ...c, enabled: !c.enabled }))}
             className={`p-2.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 transition ${
               rimConfig.enabled ? 'text-amber-300 border-amber-400/40' : 'text-white/50'
             }`}
-            title="Toggle Rim Lighting (R)"
+            title="Toggle Dynamic Slights (R)"
           >
             <Sun className="w-4 h-4" />
-            <span className="hidden sm:inline">Rim Glow</span>
+            <span className="hidden sm:inline">Dynamic Slights</span>
           </button>
 
           <button
@@ -455,7 +473,7 @@ export const App: React.FC = () => {
             title="Search songs on iTunes & LRCLIB"
           >
             <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">Search Songs</span>
+            <span className="hidden sm:inline">Search</span>
           </button>
 
           <button
@@ -476,154 +494,111 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* 4. Main Stage View: Reference Player Card (Left) & Synced Lyrics (Right) */}
-      <main className="relative z-20 flex-1 w-full h-[calc(100vh-120px)] overflow-hidden px-6 sm:px-10 md:px-16 flex items-center justify-center">
-        <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center py-4">
-          {/* LEFT: Cover art player card matching the reference image */}
-          <div className="lg:col-span-5 flex justify-center items-center h-full">
-            <LiquidGlassPlayer
+      {/* ================================================================ */}
+      {/* 3. MAIN DISPLAY: LOCKSCREEN MODE (Default) OR SPLIT MODE */}
+      {/* ================================================================ */}
+      <main className="relative z-20 flex-1 w-full h-[calc(100vh-130px)] overflow-hidden px-6 sm:px-12 md:px-20 flex items-center justify-center">
+        {layoutMode === 'lockscreen' ? (
+          /* ================================================================ */
+          /* LOCKSCREEN MODE: Pure black background + Center Lyrics + Bottom Floating Bar */
+          /* ================================================================ */
+          <div className="w-full h-full flex flex-col items-center justify-center relative animate-in fade-in duration-300">
+            {/* Center Lyrics (Single Word or Smooth Captions) */}
+            <div className="w-full max-w-4xl h-full flex flex-col items-center justify-center pb-20">
+              <SyncedLyricsView
+                lyrics={lyrics}
+                currentTime={currentTime}
+                duration={duration}
+                palette={activePalette}
+                style={lyricStyle}
+                onSeek={handleSeek}
+                onSearchOpen={() => setIsSearchOpen(true)}
+              />
+            </div>
+
+            {/* Bottom Floating Pill Player Bar with Liquid Glass & Pure White Icons */}
+            <LockscreenPlayerBar
+              ref={lockscreenBarRef}
               track={currentTrack}
               currentTime={currentTime}
               duration={duration}
               isPlaying={isPlaying}
+              lyricStyle={lyricStyle}
+              onToggleLyricStyle={toggleLyricStyle}
               onPlayPause={handlePlayPause}
               onNext={handleNext}
               onPrev={handlePrev}
               onSeek={handleSeek}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenSearch={() => setIsSearchOpen(true)}
             />
           </div>
+        ) : (
+          /* ================================================================ */
+          /* SPLIT STAGE MODE: Left Reference Card + Right Lyrics */
+          /* ================================================================ */
+          <div className="w-full h-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center py-4">
+            <div className="lg:col-span-5 flex justify-center items-center h-full">
+              <LiquidGlassPlayer
+                ref={playerCardRef}
+                track={currentTrack}
+                currentTime={currentTime}
+                duration={duration}
+                isPlaying={isPlaying}
+                onPlayPause={handlePlayPause}
+                onNext={handleNext}
+                onPrev={handlePrev}
+                onSeek={handleSeek}
+              />
+            </div>
 
-          {/* RIGHT: High-end Synced Lyrics */}
-          <div className="lg:col-span-7 h-full flex flex-col justify-center overflow-hidden">
-            <SyncedLyricsView
-              lyrics={lyrics}
-              currentTime={currentTime}
-              duration={duration}
-              palette={activePalette}
-              style={lyricStyle}
-              onChangeStyle={setLyricStyle}
-              onSeek={handleSeek}
-              onSearchOpen={() => setIsSearchOpen(true)}
-            />
+            <div className="lg:col-span-7 h-full flex flex-col justify-center overflow-hidden">
+              <SyncedLyricsView
+                lyrics={lyrics}
+                currentTime={currentTime}
+                duration={duration}
+                palette={activePalette}
+                style={lyricStyle}
+                onSeek={handleSeek}
+                onSearchOpen={() => setIsSearchOpen(true)}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
-      {/* 5. Bottom Status Dock */}
-      <footer className="relative z-30 w-full px-6 py-3 flex items-center justify-between text-xs text-white/50 pointer-events-none">
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Quick Demo Switcher if not connected to macOS app */}
-          {!currentTrack.source.startsWith('macos-') && (
-            <select
-              value={currentTrackIndex}
-              onChange={(e) => handleSelectTrack(parseInt(e.target.value, 10))}
-              className="bg-black/40 text-white/80 text-xs rounded-xl px-2.5 py-1 border border-white/10 outline-none cursor-pointer hover:bg-black/60 transition"
-            >
-              {DEMO_TRACKS.map((t, idx) => (
-                <option key={t.id} value={idx} className="bg-zinc-900 text-white">
-                  {t.title} — {t.artist}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Quick Caption Style Pills */}
-          <div className="hidden sm:flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 backdrop-blur-md">
-            <button
-              onClick={() => setLyricStyle('verci-single-word')}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
-                lyricStyle === 'verci-single-word'
-                  ? 'bg-white text-black'
-                  : 'text-white/50 hover:text-white'
-              }`}
-            >
-              ✦ Single Word
-            </button>
-            <button
-              onClick={() => setLyricStyle('smooth-captions')}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
-                lyricStyle === 'smooth-captions'
-                  ? 'bg-white text-black'
-                  : 'text-white/50 hover:text-white'
-              }`}
-            >
-              Smooth Captions
-            </button>
-            <button
-              onClick={() => setLyricStyle('cinematic')}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
-                lyricStyle === 'cinematic'
-                  ? 'bg-white text-black'
-                  : 'text-white/50 hover:text-white'
-              }`}
-            >
-              Cinematic
-            </button>
-            <button
-              onClick={() => setLyricStyle('perspective-3d')}
-              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
-                lyricStyle === 'perspective-3d'
-                  ? 'bg-white text-black'
-                  : 'text-white/50 hover:text-white'
-              }`}
-            >
-              3D Wall
-            </button>
-          </div>
-        </div>
-
-        {/* Sync Calibration Controls & Hotkeys */}
-        <div className="flex items-center gap-3 pointer-events-auto text-[11px]">
-          <div className="flex items-center gap-1 font-mono">
-            <span className="text-white/40">Sync:</span>
-            <button
-              onClick={() => adjustSyncOffset(-50)}
-              className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white font-bold"
-              title="Shift earlier (-50ms) [ key"
-            >
-              -50ms
-            </button>
-            <span className="text-cyan-300 font-bold px-1">
-              {syncOffset > 0 ? `+${syncOffset}` : syncOffset}ms
-            </span>
-            <button
-              onClick={() => adjustSyncOffset(50)}
-              className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white font-bold"
-              title="Shift later (+50ms) ] key"
-            >
-              +50ms
-            </button>
-          </div>
-
-          <span className="hidden md:inline text-white/30">•</span>
-          <span className="hidden md:inline text-white/40 font-medium">
-            Keys: Space (Play/Pause) • L (Style) • [ ] (Sync $\pm$50ms) • F (Fullscreen)
-          </span>
-        </div>
+      {/* 4. Bottom Hint Line */}
+      <footer className="relative z-30 w-full px-6 py-2.5 flex items-center justify-between text-[11px] text-white/35 pointer-events-none">
+        <span className="hidden sm:inline">
+          {lyrics ? `Lyrics: ${lyrics.source || 'LRCLIB'}` : lyricsLoading ? 'Fetching lyrics...' : 'No lyrics'}
+        </span>
+        <span className="hidden md:inline">
+          Hotkeys: Space (Play/Pause) • L (Toggle Style) • [ ] (Sync $\pm$50ms) • F (Fullscreen)
+        </span>
       </footer>
 
-      {/* 6. Settings Modal */}
+      {/* Settings Modal */}
       <ControlsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         rimConfig={rimConfig}
         setRimConfig={setRimConfig}
         lyricConfig={{
-          style: 'cinematic',
+          style: lyricStyle,
           fontSize: 'large',
           wordSync: true,
           syncOffset,
           autoScroll: true
         }}
         setLyricConfig={() => {}}
-        layoutMode="split"
-        setLayoutMode={() => {}}
+        layoutMode={layoutMode}
+        setLayoutMode={setLayoutMode}
         palette={activePalette}
         isMacBridgeOnline={isMacBridgeOnline}
         onFileUpload={handleFileUpload}
       />
 
-      {/* 7. Track Search Modal */}
+      {/* Search Modal */}
       <TrackSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}

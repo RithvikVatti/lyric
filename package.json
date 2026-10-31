@@ -1,33 +1,59 @@
 {
-  "name": "lumen-ambient",
+  "name": "lumen",
   "version": "1.0.0",
-  "description": "Open-source ambient rim lighting, liquid-glass now playing card, and real-time kinetic synchronized lyrics for Spotify, Apple Music & local tracks.",
+  "description": "Open-source ambient rim lighting and kinetic synchronized lyrics for Spotify and Apple Music.",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "start": "concurrently \"npm run server\" \"npm run dev\""
+    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "electron:dev": "concurrently \"node server/index.js\" \"vite\" \"electron electron/main.cjs\"",
+    "package:mac": "npm run build && electron-builder --mac --dir",
+    "build:dmg": "npm run build && electron-builder --mac dmg"
+  },
+  "build": {
+    "appId": "xyz.trylumen.app",
+    "productName": "Lumen",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    }
   },
   "keywords": [
     "lumen",
-    "lumn",
+    "trylumen",
     "verci",
     "ambient-lighting",
-    "synced-lyrics",
+    "lyrics",
     "lrclib",
     "spotify",
     "apple-music",
-    "liquid-glass",
-    "macos"
+    "lockscreen"
   ],
-  "author": "Lumen Community",
+  "author": "Lumen Contributors",
   "license": "MIT",
   "dependencies": {
+    "@ybouane/liquidglass": "^1.0.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "framer-motion": "^14.9.0",
+    "framer-motion": "^12.4.7",
     "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -40,6 +66,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.2",
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.9",
     "typescript": "^5.7.3",
