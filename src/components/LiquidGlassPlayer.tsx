@@ -51,11 +51,11 @@ export const LiquidGlassPlayer = React.forwardRef<HTMLDivElement, LiquidGlassPla
 
   return (
     <div className="relative select-none transition-all duration-300">
-      {/* Outer Card Bezel with Liquid Glass Effect */}
+      {/* Outer Card Bezel with Dark Translucent Liquid Glass Effect */}
       <div
         ref={ref}
         data-liquidglass="true"
-        className="w-[360px] sm:w-[390px] md:w-[420px] aspect-square rounded-[36px] sm:rounded-[42px] p-2.5 sm:p-3 bg-[#18181c]/60 backdrop-blur-3xl border border-white/15 relative overflow-hidden shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85),0_0_50px_rgba(0,0,0,0.45)]"
+        className="w-[360px] sm:w-[390px] md:w-[420px] aspect-square rounded-[36px] sm:rounded-[42px] p-2.5 sm:p-3 bg-black/45 backdrop-blur-2xl border border-white/[0.14] relative overflow-hidden shadow-[0_30px_70px_-15px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.2)]"
       >
         {/* Inner Artwork Container */}
         <div className="relative w-full h-full rounded-[28px] sm:rounded-[34px] overflow-hidden bg-zinc-900 group">

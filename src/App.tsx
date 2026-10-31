@@ -29,12 +29,9 @@ import { useLiquidGlass } from './hooks/useLiquidGlass';
 
 import {
   Sun,
-  Sliders,
-  Sparkles,
   Maximize2,
   Minimize2,
-  Clock,
-  Layout
+  Clock
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -78,10 +75,15 @@ export const App: React.FC = () => {
   const lockscreenBarRef = useRef<HTMLDivElement>(null);
   const playerCardRef = useRef<HTMLDivElement>(null);
 
-  // Attach ybouane/liquidglass WebGL shader to glass HTML elements
+  // Attach ybouane/liquidglass WebGL shader to glass HTML elements (darker, translucent glass)
   useLiquidGlass(rootContainerRef, [lockscreenBarRef, playerCardRef], {
-    refraction: 0.55,
-    cornerRadius: 40,
+    refraction: 0.45,
+    chromAberration: 0.035,
+    edgeHighlight: 0.1,
+    blurAmount: 0.12,
+    cornerRadius: 38,
+    brightness: -0.22,
+    opacity: 0.8,
     floating: false
   });
 
@@ -418,78 +420,29 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Top Floating Header Bar */}
-      <header className="relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-3 pointer-events-auto">
-          <div
-            className="w-9 h-9 rounded-2xl glass-panel flex items-center justify-center text-cyan-400 shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition"
-            onClick={() => setIsSettingsOpen(true)}
-            style={{ borderColor: activePalette.accent }}
-          >
-            <Sun className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold tracking-tight text-white drop-shadow">
-                Lumen
-              </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
-                OSS
-              </span>
-            </div>
-            <p className="text-[10px] text-white/50 tracking-wide font-medium">
-              Dynamic Slights & Kinetic Lyrics
-            </p>
-          </div>
-        </div>
-
-        {/* View Layout Toggle: Lockscreen vs Split */}
-        <div className="pointer-events-auto flex items-center gap-2">
-          <button
-            onClick={() => setLayoutMode(curr => curr === 'lockscreen' ? 'split' : 'lockscreen')}
-            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 text-white/90 hover:text-white transition shadow-sm"
-            title="Toggle Lockscreen Mode"
-          >
-            <Layout className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">
-              {layoutMode === 'lockscreen' ? 'Lockscreen View' : 'Split View'}
-            </span>
-          </button>
-
+      {/* 2. Top Bar: Pure White Minimal Floating Icons (Dynamic Slights & Fullscreen Only) */}
+      <header className="relative z-30 w-full px-6 py-4 flex items-center justify-end pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-3">
+          {/* Dynamic Slights (Pure White Icon Only - No Button Styling) */}
           <button
             onClick={() => setRimConfig(c => ({ ...c, enabled: !c.enabled }))}
-            className={`p-2.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 transition ${
-              rimConfig.enabled ? 'text-amber-300 border-amber-400/40' : 'text-white/50'
+            className={`p-2 transition active:scale-90 focus:outline-none ${
+              rimConfig.enabled
+                ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.75)]'
+                : 'text-white/40 hover:text-white'
             }`}
             title="Toggle Dynamic Slights (R)"
           >
-            <Sun className="w-4 h-4" />
-            <span className="hidden sm:inline">Dynamic Slights</span>
+            <Sun className="w-5 h-5 text-white" />
           </button>
 
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className="p-2.5 rounded-2xl glass-button text-xs font-semibold flex items-center gap-1.5 text-white/80 hover:text-white transition"
-            title="Search songs on iTunes & LRCLIB"
-          >
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">Search</span>
-          </button>
-
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2.5 rounded-2xl glass-button text-white/80 hover:text-white transition"
-            title="Settings & Controls"
-          >
-            <Sliders className="w-4 h-4" />
-          </button>
-
+          {/* Fullscreen (Pure White Icon Only - No Button Styling) */}
           <button
             onClick={toggleFullscreen}
-            className="p-2.5 rounded-2xl glass-button text-white/80 hover:text-white transition"
+            className="p-2 text-white/80 hover:text-white transition active:scale-90 focus:outline-none"
             title="Toggle Fullscreen (F)"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="w-5 h-5 text-white" /> : <Maximize2 className="w-5 h-5 text-white" />}
           </button>
         </div>
       </header>

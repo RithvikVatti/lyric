@@ -7,6 +7,8 @@ interface UseLiquidGlassOptions {
   edgeHighlight?: number;
   blurAmount?: number;
   cornerRadius?: number;
+  brightness?: number;
+  opacity?: number;
   floating?: boolean;
 }
 
@@ -48,12 +50,15 @@ export function useLiquidGlass(
           root,
           glassElements,
           defaults: {
-            refraction: options.refraction ?? 0.65,
-            chromAberration: options.chromAberration ?? 0.04,
-            edgeHighlight: options.edgeHighlight ?? 0.08,
-            blurAmount: options.blurAmount ?? 0.2,
-            cornerRadius: options.cornerRadius ?? 36,
-            floating: options.floating ?? true
+            refraction: options.refraction ?? 0.45,
+            chromAberration: options.chromAberration ?? 0.035,
+            edgeHighlight: options.edgeHighlight ?? 0.1,
+            blurAmount: options.blurAmount ?? 0.12,
+            cornerRadius: options.cornerRadius ?? 38,
+            brightness: options.brightness ?? -0.22, // Dark smoked glass shader
+            opacity: options.opacity ?? 0.8,        // Transparent enough for background transmission
+            floating: options.floating ?? false,
+            button: false
           }
         });
 
@@ -82,7 +87,15 @@ export function useLiquidGlass(
         instanceRef.current = null;
       }
     };
-  }, [rootRef, ...glassRefs, options.refraction, options.blurAmount, options.cornerRadius]);
+  }, [
+    rootRef,
+    ...glassRefs,
+    options.refraction,
+    options.blurAmount,
+    options.cornerRadius,
+    options.brightness,
+    options.opacity
+  ]);
 
   return instanceRef;
 }

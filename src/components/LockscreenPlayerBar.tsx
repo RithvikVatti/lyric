@@ -62,11 +62,11 @@ export const LockscreenPlayerBar = React.forwardRef<HTMLDivElement, LockscreenPl
 
   return (
     <div className="fixed bottom-7 left-1/2 -translate-x-1/2 z-40 select-none animate-in fade-in slide-in-from-bottom-5 duration-300">
-      {/* Floating Pill Bar with Liquid Glass Effect & Purely White Icons */}
+      {/* Floating Pill Bar with Dark Translucent Liquid Glass Effect & Purely White Icons */}
       <div
         ref={ref}
         data-liquidglass="true"
-        className="flex items-center gap-3.5 sm:gap-5 px-5 py-2.5 rounded-full bg-white/[0.08] backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.35)] text-white relative overflow-hidden"
+        className="flex items-center gap-3.5 sm:gap-5 px-5 py-2.5 rounded-full bg-black/45 backdrop-blur-2xl border border-white/[0.14] shadow-[0_25px_60px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.22)] text-white relative overflow-hidden"
       >
         {/* ======================================= */}
         {/* 1. LEFT CONTROLS: Pure White Icons (Prev, Play/Pause, Next) */}
